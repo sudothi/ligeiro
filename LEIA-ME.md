@@ -23,7 +23,7 @@ Na etapa 2 o celular do profissional vai acionar as mesmas ações (Certo, Repet
 2. Nesta pasta: `npm install` e depois `npm start`.
 
 Para gerar o instalador do Windows: `npm run dist` (gera em `dist/`).
-Versão pronta para testar: `../versoes/Dedos-Ligeiros-0.1.0-windows.zip` (descompacte e abra `Dedos Ligeiros.exe`).
+Versão pronta para testar: `../versoes/Dedos-Ligeiros-0.2.0-windows.zip (pasta do projeto no claude.ai)` (descompacte e abra `Dedos Ligeiros.exe`).
 
 ## Estrutura
 - `src/` o jogo (HTML, CSS, JavaScript), o mesmo código servirá ao app Android do tablet.

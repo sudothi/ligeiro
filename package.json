@@ -1,6 +1,6 @@
 {
   "name": "dedos-ligeiros",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Jogo de psicopedagogia: a criança vê um número e mexe os dedos na ordem dos algarismos.",
   "main": "electron/main.js",
   "private": true,
