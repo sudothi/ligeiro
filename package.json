@@ -15,8 +15,22 @@
   "build": {
     "appId": "br.dedosligeiros.app",
     "productName": "Dedos Ligeiros",
-    "files": ["electron/**", "src/**", "build/icon.png"],
-    "win": { "target": "nsis", "icon": "build/icon.png" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "shortcutName": "Dedos Ligeiros" }
+    "files": [
+      "electron/**",
+      "src/**",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Dedos Ligeiros"
+    }
+  },
+  "allowScripts": {
+    "electron@33.2.1": true
   }
 }
