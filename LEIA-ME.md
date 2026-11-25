@@ -25,6 +25,12 @@ Jogo para atendimentos de psicopedagogia: aparece um número, a criança mexe os
 - **Novo código** desconecta os celulares e gera outro código.
 - Na primeira vez, o Windows pergunta se libera o acesso à rede: marque **Redes privadas** e clique em Permitir. Se a rede Wi-Fi estiver marcada como "Pública" no Windows, o celular não conecta; mude para "Privada".
 
+## App do tablet (Android)
+- Só o modo com o celular do profissional. O tablet mostra o jogo e o QR code; o celular controla, igual no PC.
+- O APK é gerado automaticamente pelo GitHub a cada mudança e fica em **Releases > tablet** (github.com/sudothi/ligeiro/releases/tag/tablet). Abra esse link no próprio tablet, baixe o `.apk` e instale (o Android pede para permitir "instalar apps desconhecidos" no navegador).
+- O projeto Android fica em `android/` (Capacitor). O servidor local do tablet está em `android/app/src/main/java/br/dedosligeiros/app/LanServer.java`.
+- Para gerar no PC (precisa do Android Studio): `npm run android:sync` e abrir a pasta `android/` no Android Studio.
+
 ## Rodar no computador
 1. Instale o Node.js (versão 20 ou mais nova).
 2. Nesta pasta: `npm install` e depois `npm start`.

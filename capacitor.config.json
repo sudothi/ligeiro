@@ -1,0 +1,6 @@
+{
+  "appId": "br.dedosligeiros.app",
+  "appName": "Dedos Ligeiros",
+  "webDir": "www",
+  "android": { "backgroundColor": "#5b3fd9" }
+}

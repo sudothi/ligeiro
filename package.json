@@ -6,11 +6,17 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --x64"
+    "dist": "electron-builder --win --x64",
+    "www": "node scripts/build-www.js",
+    "android:sync": "node scripts/build-www.js && npx cap sync android"
   },
   "devDependencies": {
+    "@capacitor/android": "6.2.3",
+    "@capacitor/cli": "6.2.3",
+    "@capacitor/core": "6.2.3",
     "electron": "33.2.1",
-    "electron-builder": "25.1.8"
+    "electron-builder": "25.1.8",
+    "qrcode-generator": "2.0.4"
   },
   "build": {
     "appId": "br.dedosligeiros.app",

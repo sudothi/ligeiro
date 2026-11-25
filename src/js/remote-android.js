@@ -1,0 +1,27 @@
+/* Android (tablet): the local server lives in the native LocalServer plugin
+   (android/.../LocalServerPlugin.java). This file gives it the same shape as the
+   Electron preload bridge, so remote.js works unchanged. Only injected into www/. */
+(function () {
+  const cap = window.Capacitor;
+  if (window.remoteBridge || !cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+  const LS = cap.registerPlugin('LocalServer');
+
+  function withQr(info) {
+    if (info && info.url && window.qrcode) {
+      const q = window.qrcode(0, 'M');
+      q.addData(info.url);
+      q.make();
+      info.qr = q.createDataURL(8, 2);
+    }
+    return info;
+  }
+
+  window.remoteBridge = {
+    info: async () => withQr(await LS.info()),
+    newCode: async () => withQr(await LS.newCode()),
+    sendState: state => { LS.sendState({ state: JSON.stringify(state) }).catch(() => {}); },
+    onAction: fn => LS.addListener('action', e => fn(e.name)),
+    onConfig: fn => LS.addListener('config', e => fn(e.key, e.value)),
+    onClients: fn => LS.addListener('clients', e => fn(e.count))
+  };
+})();

@@ -1,0 +1,53 @@
+# Builds the tablet app (Android APK) and publishes it on the "tablet" release,
+# so it can be downloaded straight from the tablet's browser.
+name: App Android (tablet)
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'remote/**', 'android/**', 'scripts/**', 'capacitor.config.json', 'package.json', 'package-lock.json', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Instalar dependências
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Copiar o jogo para o projeto Android
+        run: npm run android:sync
+      - name: Compilar APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - name: Renomear
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Dedos-Ligeiros-tablet-$VER.apk"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dedos-Ligeiros-tablet-apk
+          path: Dedos-Ligeiros-tablet-*.apk
+      - name: Publicar na release "tablet"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete tablet --yes --cleanup-tag || true
+          gh release create tablet "Dedos-Ligeiros-tablet-$VER.apk" \
+            --title "App do tablet $VER" \
+            --notes "Abra esta página no tablet, toque no arquivo .apk para baixar e instale (permita 'instalar apps desconhecidos' para o navegador). Gerado do commit ${GITHUB_SHA::7}." \
+            --target "$GITHUB_SHA"
