@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dedos Ligeiros</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-shapes" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<!-- HOME -->
+<section id="home" class="screen">
+  <div class="home-hero">
+    <div class="mascot" id="homeMascot"></div>
+    <h1 class="logo">Dedos<br>Ligeiros<small>veja o número, mexa os dedinhos!</small></h1>
+  </div>
+  <div class="panel">
+    <span class="lbl">Algarismos</span>
+    <div class="seg" id="segDigits" role="group" aria-label="Quantidade de algarismos"></div>
+    <span class="lbl">Números na rodada</span>
+    <div class="seg" id="segRounds" role="group" aria-label="Números por rodada"></div>
+    <span class="lbl">Voz</span>
+    <div class="seg" id="segVoice" role="group" aria-label="Falar o número"></div>
+    <span class="lbl">Sons</span>
+    <div class="seg" id="segSound" role="group" aria-label="Efeitos sonoros"></div>
+  </div>
+  <div class="home-actions">
+    <button class="btn yellow big" id="btnStart">Jogar!</button>
+  </div>
+  <button class="textlink" id="btnRings">Anéis de papel para imprimir</button>
+</section>
+
+<!-- GAME -->
+<section id="game" class="screen" hidden>
+  <div class="topbar">
+    <span class="chip" id="levelChip">2 algarismos</span>
+    <div class="dots" id="dots" aria-label="Progresso da rodada"></div>
+    <button class="btn iconbtn" id="btnPause" aria-label="Pausar">❚❚</button>
+  </div>
+  <div class="stage">
+    <div class="side left">
+      <div class="mascot" id="gameMascot"><div class="bubble" id="bubble">Mostre com os dedos!</div></div>
+    </div>
+    <div class="ticker" aria-live="polite">
+      <div class="ghost" id="prevNum"></div>
+      <div class="card" id="card"></div>
+      <div class="ghost" id="nextNum"></div>
+    </div>
+    <div class="side right"></div>
+  </div>
+  <div class="controls" id="controls" aria-label="Controles do profissional">
+    <span class="who">Profissional</span>
+    <button class="btn" id="btnBack" aria-label="Voltar um número">Voltar <kbd>←</kbd></button>
+    <button class="btn blue" id="btnRepeat">Repetir <kbd>R</kbd></button>
+    <button class="btn green big" id="btnOk">Certo! <kbd>Espaço</kbd></button>
+    <button class="btn coral" id="btnSkip">Pular <kbd>→</kbd></button>
+  </div>
+</section>
+
+<!-- PAUSE -->
+<div class="overlay" id="pause" hidden>
+  <div class="box">
+    <h2>Pausado</h2>
+    <button class="btn green big" id="btnResume">Continuar</button>
+    <button class="btn" id="btnQuit">Encerrar rodada</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<section id="result" class="screen" hidden>
+  <div class="mascot" id="resultMascot"></div>
+  <h2 id="resultTitle">Muito bem!</h2>
+  <div class="stars" id="stars"></div>
+  <div class="stats">
+    <div class="stat"><b id="stOk">0</b><span>acertos</span></div>
+    <div class="stat"><b id="stSkip">0</b><span>pulados</span></div>
+    <div class="stat"><b id="stTime">0:00</b><span>tempo</span></div>
+  </div>
+  <div class="home-actions">
+    <button class="btn yellow big" id="btnAgain">Jogar de novo</button>
+    <button class="btn" id="btnHome">Início</button>
+  </div>
+</section>
+
+<!-- RINGS -->
+<section id="rings" class="screen" hidden>
+  <button class="btn noprint" id="btnRingsBack" style="align-self:flex-start">← Voltar</button>
+  <h2>Anéis de papel</h2>
+  <p class="noprint">Imprima, recorte as tiras, enrole no dedo e prenda com fita. Ordem sugerida: mão esquerda, do mindinho ao polegar, 1 a 5. Mão direita, do polegar ao mindinho, 6, 7, 8, 9 e 0. Cada número tem a mesma cor da tela.</p>
+  <button class="btn yellow noprint" id="btnPrint">Imprimir</button>
+  <div class="sheet" id="sheet"></div>
+</section>
+
+<script src="js/mascot.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/confetti.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

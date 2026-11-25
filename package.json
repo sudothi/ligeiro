@@ -1,0 +1,22 @@
+{
+  "name": "dedos-ligeiros",
+  "version": "0.1.0",
+  "description": "Jogo de psicopedagogia: a criança vê um número e mexe os dedos na ordem dos algarismos.",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "br.dedosligeiros.app",
+    "productName": "Dedos Ligeiros",
+    "files": ["electron/**", "src/**", "build/icon.png"],
+    "win": { "target": "nsis", "icon": "build/icon.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "shortcutName": "Dedos Ligeiros" }
+  }
+}
