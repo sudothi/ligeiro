@@ -52,7 +52,49 @@
       speechSynthesis.speak(u);
     } catch (e) { /* speech not available */ }
   }
-  function hush() { try { speechSynthesis.cancel(); } catch (e) {} }
+  /* Recorded voice clips (src/audio/<key>.mp3). Played in sequence; if any clip is
+     missing or fails, the whole line falls back to the system voice. */
+  const clipCache = {};
+  const clipOk = {};
+  let playing = null;
+  let token = 0;
 
-  window.Audio2 = { sfx, say, hush, opts };
+  function loadClip(key) {
+    if (!clipCache[key]) {
+      clipCache[key] = new Promise(resolve => {
+        const a = new Audio(`audio/${key}.mp3`);
+        a.preload = 'auto';
+        a.oncanplaythrough = () => { clipOk[key] = true; resolve(a); };
+        a.onerror = () => { clipOk[key] = false; resolve(null); };
+        a.load();
+      });
+    }
+    return clipCache[key];
+  }
+
+  async function speak(clips, text, rate) {
+    if (!opts.voice) return;
+    const my = ++token;
+    hush();
+    const audios = await Promise.all(clips.map(loadClip));
+    if (my !== token) return;
+    if (audios.some(a => !a)) { say(text, rate); return; }
+    for (const a of audios) {
+      if (my !== token) return;
+      playing = a;
+      a.currentTime = 0;
+      await new Promise(res => { a.onended = res; a.onpause = res; a.play().catch(res); });
+    }
+    playing = null;
+  }
+
+  function preload(keys) { keys.forEach(loadClip); }
+
+  function hush() {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    if (playing) { try { playing.pause(); } catch (e) {} playing = null; }
+  }
+  function stop() { token++; hush(); }
+
+  window.Audio2 = { sfx, say, speak, preload, hush: stop, opts };
 })();

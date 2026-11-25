@@ -1,0 +1,6 @@
+Falas gravadas do jogo (mp3). Se um arquivo faltar, o jogo usa a voz do sistema.
+0.mp3 a 9.mp3 ......... "zero" ... "nove"
+elogio-1.mp3 a 6 ...... "Isso aí!", "Muito bem!", "Arrasou!", "Que dedinhos rápidos!", "Perfeito!", "Uhuu!"
+de-novo.mp3 ........... "Olha de novo..."
+proximo.mp3 ........... "Tudo bem, vamos para o próximo!"
+parabens.mp3 .......... "Incrível! Parabéns!"

@@ -50,7 +50,7 @@
   }
   function speakNumber(num) {
     const digits = [...num].map(d => WORDS[+d]);
-    Audio2.say(num.length === 1 ? digits[0] : `${num}. ${digits.join(', ')}`);
+    Audio2.speak([...num], num.length === 1 ? digits[0] : `${num}. ${digits.join(', ')}`);
   }
 
   /* ---------- state ---------- */
@@ -121,7 +121,7 @@
     resultMascot.set('cheer', 4000);
     Audio2.sfx.finish();
     Confetti.burst(160, innerWidth / 2, innerHeight * 0.35);
-    Audio2.say(stars === 3 ? 'Incrível! Parabéns!' : 'Muito bem! Parabéns!');
+    Audio2.speak(['parabens'], 'Incrível! Parabéns!');
   }
 
   function starSvg(on, i) {
@@ -143,9 +143,10 @@
       const card = $('card');
       card.classList.remove('enter', 'leave'); void card.offsetWidth; card.classList.add('win');
       gameMascot.set('cheer', 1400);
-      const p = pick(PRAISE); say(p);
+      const pi = Math.floor(Math.random() * PRAISE.length);
+      const p = PRAISE[pi]; say(p);
       Audio2.sfx.correct();
-      Audio2.say(p, 1);
+      Audio2.speak([`elogio-${pi + 1}`], p, 1);
       const r = card.getBoundingClientRect();
       Confetti.burst(70, r.left + r.width / 2, r.top + r.height / 2);
       setTimeout(advance, 1300);
@@ -157,8 +158,9 @@
       renderDots();
       gameMascot.set('oops', 700);
       say('Tudo bem, vamos para o próximo!');
+      Audio2.speak(['proximo'], 'Tudo bem, vamos para o próximo!', 1);
       Audio2.sfx.skip();
-      setTimeout(advance, 700);
+      setTimeout(advance, 1500);
     },
     repeat() {
       if (busy) return;
@@ -167,7 +169,8 @@
       say('Olha de novo...');
       const card = $('card');
       card.classList.remove('enter', 'win', 'leave'); void card.offsetWidth; card.classList.add('enter');
-      speakNumber(rounds[idx].num);
+      const n = rounds[idx].num;
+      Audio2.speak(['de-novo', ...n], `Olha de novo. ${[...n].map(d => WORDS[+d]).join(', ')}`);
     },
     back() {
       if (busy || idx === 0) return;
@@ -241,6 +244,8 @@
   /* printable rings: two full sets */
   $('sheet').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d =>
     `<div class="strip" style="--dc:${DIGIT_COLOR(d)}"><div class="face">${d}</div><div class="band"></div><small>cole aqui</small></div>`).join('');
+
+  Audio2.preload(['0','1','2','3','4','5','6','7','8','9','elogio-1','elogio-2','elogio-3','elogio-4','elogio-5','elogio-6','proximo','parabens','de-novo']);
 
   window.Game = { action, get state() { return { screen, idx, paused, rounds: rounds.map(r => ({ ...r })) }; } };
 })();
