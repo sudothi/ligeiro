@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#5b3fd9">
+<title>Dedos Ligeiros · Controle</title>
+<link rel="stylesheet" href="/css/fonts.css">
+<style>
+/* Phone controller for the professional. Big thumb-sized buttons, the current number
+   shown small so the professional can check the child's fingers. */
+:root {
+  --bg: #5b3fd9; --bg-deep: #3f2aa6; --ink: #2a1f4f; --ink-soft: #6f6796; --card: #fff; --card-edge: #d9d3f2;
+  --white-edge: #cfc6f5; --yellow: #ffc93c; --yellow-edge: #e0a514; --green: #2bc46b; --green-edge: #1c9450;
+  --blue: #3ba4ff; --blue-edge: #1f7fd6; --coral: #ff6b6b; --coral-edge: #d94c4c;
+  --d0: #6c5ce7; --d1: #e84393; --d2: #ff7f11; --d3: #e6a800; --d4: #22b268;
+  --d5: #00a3d4; --d6: #3867d6; --d7: #b04ad6; --d8: #e5502f; --d9: #0f9b8e;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body);
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none; touch-action: manipulation;
+}
+button { font: inherit; color: inherit; border: none; cursor: pointer; }
+.wrap {
+  min-height: 100%; display: flex; flex-direction: column; gap: 14px; max-width: 520px; margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #fff; }
+header h1 { font-family: var(--display); font-weight: 700; font-size: 22px; margin: 0; }
+.status { font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.18); display: inline-flex; align-items: center; gap: 6px; }
+.status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); }
+.status.ok::before { background: var(--green); }
+.status.bad::before { background: var(--coral); }
+
+.btn {
+  --c: var(--card); --e: var(--white-edge); --t: var(--ink);
+  background: var(--c); color: var(--t); font-family: var(--display); font-weight: 600; font-size: 22px;
+  padding: 16px 18px; border-radius: 18px; box-shadow: 0 6px 0 var(--e);
+  display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .06s, box-shadow .06s;
+}
+.btn:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--e); }
+.btn:disabled { opacity: .45; }
+.btn.yellow { --c: var(--yellow); --e: var(--yellow-edge); }
+.btn.green { --c: var(--green); --e: var(--green-edge); --t: #fff; }
+.btn.blue { --c: var(--blue); --e: var(--blue-edge); --t: #fff; }
+.btn.coral { --c: var(--coral); --e: var(--coral-edge); --t: #fff; }
+.btn.huge { font-size: 40px; padding: 0; min-height: 150px; border-radius: 26px; box-shadow: 0 9px 0 var(--e); }
+.btn.huge:active { transform: translateY(8px); }
+
+.card { background: var(--card); border-radius: 24px; box-shadow: 0 7px 0 var(--white-edge); padding: 16px; }
+.msg { text-align: center; color: #fff; font-weight: 700; margin: auto 0; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.msg h2 { font-family: var(--display); font-size: 28px; margin: 0; }
+.msg p { margin: 0; opacity: .9; }
+.codein { font-family: var(--display); font-size: 44px; letter-spacing: 12px; text-align: center; width: 230px; padding: 10px; border-radius: 18px; border: none; box-shadow: 0 6px 0 var(--white-edge); color: var(--ink); }
+
+/* home */
+.cfg { display: grid; gap: 12px; }
+.cfg .lbl { font-family: var(--display); font-weight: 600; font-size: 18px; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.seg button { flex: 1; min-width: 54px; height: 50px; border-radius: 14px; background: #f1eefc; box-shadow: 0 4px 0 var(--card-edge); font-family: var(--display); font-weight: 600; font-size: 20px; }
+.seg button[aria-pressed="true"] { background: var(--bg); color: #fff; box-shadow: 0 4px 0 var(--bg-deep); }
+
+/* game */
+.now { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.now .lbl { font-weight: 800; font-size: 13px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 1px; }
+.num { font-family: var(--display); font-weight: 700; font-size: 64px; line-height: 1; display: flex; gap: 4px; font-variant-numeric: tabular-nums; }
+.next { font-family: var(--display); font-weight: 600; font-size: 26px; color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.25); }
+.dots i.cur { background: #fff; transform: scale(1.25); }
+.dots i.ok { background: var(--green); }
+.dots i.skip { background: var(--yellow); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.row3 .btn { font-size: 18px; padding: 14px 8px; }
+.spacer { flex: 1; }
+
+/* result */
+.stars { display: flex; justify-content: center; gap: 8px; }
+.stars svg { width: 56px; height: 56px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+.stats b { display: block; font-family: var(--display); font-size: 30px; }
+.stats span { color: var(--ink-soft); font-weight: 800; font-size: 13px; }
+h2.title { font-family: var(--display); color: #fff; text-align: center; margin: 0; font-size: 32px; }
+
+.banner { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--ink); color: #fff; font-weight: 800; padding: 12px 14px; border-radius: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Dedos Ligeiros</h1>
+    <span class="status" id="status">Conectando…</span>
+  </header>
+
+  <!-- waiting / errors -->
+  <section class="msg" id="vWait">
+    <h2>Conectando ao jogo…</h2>
+    <p>O celular precisa estar no mesmo Wi-Fi do computador.</p>
+  </section>
+
+  <section class="msg" id="vCode" hidden>
+    <h2>Digite o código da sala</h2>
+    <p>Ele aparece na tela do jogo, em "Controlar pelo celular".</p>
+    <input class="codein" id="codeIn" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Código da sala">
+    <button class="btn yellow" id="btnCode" style="width:230px">Entrar</button>
+  </section>
+
+  <!-- home: settings + start -->
+  <section id="vHome" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="card cfg">
+      <div><span class="lbl">Algarismos</span><div class="seg" data-key="digits" data-values="1,2,3,4"></div></div>
+      <div><span class="lbl">Números na rodada</span><div class="seg" data-key="rounds" data-values="5,10,15"></div></div>
+      <div><span class="lbl">Voz</span><div class="seg" data-key="voice" data-values="true,false" data-labels="Ligada,Desligada"></div></div>
+      <div><span class="lbl">Sons</span><div class="seg" data-key="sound" data-values="true,false" data-labels="Ligados,Desligados"></div></div>
+    </div>
+    <button class="btn yellow huge" data-act="start">Jogar!</button>
+  </section>
+
+  <!-- game -->
+  <section id="vGame" hidden style="display:flex;flex-direction:column;gap:14px;flex:1">
+    <div class="dots" id="dots"></div>
+    <div class="card now">
+      <div><div class="lbl">Na tela</div><div class="num" id="num"></div></div>
+      <div><div class="lbl" style="text-align:right">Próximo</div><div class="next" id="next">–</div></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn green huge" data-act="correct">Certo!</button>
+    <div class="grid2">
+      <button class="btn blue" data-act="repeat">Repetir</button>
+      <button class="btn coral" data-act="skip">Pular</button>
+    </div>
+    <div class="grid2">
+      <button class="btn" data-act="back">← Voltar</button>
+      <button class="btn" data-act="pause">❚❚ Pausar</button>
+    </div>
+  </section>
+
+  <!-- paused -->
+  <section id="vPause" hidden style="display:flex;flex-direction:column;gap:14px;margin:auto 0">
+    <h2 class="title">Pausado</h2>
+    <button class="btn green huge" data-act="pause">Continuar</button>
+    <button class="btn" data-act="quit">Encerrar rodada</button>
+  </section>
+
+  <!-- result -->
+  <section id="vResult" hidden style="display:flex;flex-direction:column;gap:14px;margin:auto 0">
+    <h2 class="title">Rodada terminada!</h2>
+    <div class="stars" id="stars"></div>
+    <div class="card stats">
+      <div><b id="rOk">0</b><span>acertos</span></div>
+      <div><b id="rSkip">0</b><span>pulados</span></div>
+      <div><b id="rTime">0:00</b><span>tempo</span></div>
+    </div>
+    <button class="btn yellow huge" data-act="start">Jogar de novo</button>
+    <button class="btn" data-act="home">Início</button>
+  </section>
+</div>
+<div class="banner" id="banner" hidden>Reconectando…</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const views = ['vWait', 'vCode', 'vHome', 'vGame', 'vPause', 'vResult'];
+  const COLORS = n => `var(--d${n})`;
+  const params = new URLSearchParams(location.search);
+  let code = params.get('c') || '';
+  try { if (!code) code = localStorage.getItem('dl-code') || ''; } catch (e) {}
+  let ws = null, state = null, retry = null, everConnected = false;
+
+  function view(id) { views.forEach(v => { $(v).hidden = v !== id; }); }
+  function status(text, cls) { const s = $('status'); s.textContent = text; s.className = 'status ' + (cls || ''); }
+
+  function connect() {
+    clearTimeout(retry);
+    if (!/^\d{4}$/.test(code)) { view('vCode'); status('Sem código', 'bad'); return; }
+    status('Conectando…');
+    const sock = new WebSocket(`ws://${location.host}/ws?code=${code}`);
+    ws = sock;
+    let denied = false;
+    sock.onmessage = ev => {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.t === 'hello') {
+        everConnected = true;
+        try { localStorage.setItem('dl-code', code); } catch (e) {}
+        if (params.get('c')) history.replaceState(null, '', '/');
+        status('Conectado', 'ok'); $('banner').hidden = true;
+        if (!state) view('vWait');
+      } else if (m.t === 'denied') {
+        denied = true; state = null;
+        try { localStorage.removeItem('dl-code'); } catch (e) {}
+        code = ''; $('codeIn').value = '';
+        view('vCode'); status(everConnected ? 'Código mudou' : 'Código errado', 'bad');
+      } else if (m.t === 'state') { state = m.state; render(); }
+    };
+    sock.onclose = () => {
+      if (ws !== sock || denied) return;
+      status('Sem conexão', 'bad');
+      if (everConnected) $('banner').hidden = false;
+      retry = setTimeout(connect, 1500);
+    };
+  }
+
+  function send(msg) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(msg)); return true; } return false; }
+
+  /* settings segments */
+  document.querySelectorAll('.seg').forEach(el => {
+    const vals = el.dataset.values.split(',').map(v => (v === 'true' ? true : v === 'false' ? false : +v));
+    const labels = el.dataset.labels ? el.dataset.labels.split(',') : vals.map(String);
+    vals.forEach((v, i) => {
+      const b = document.createElement('button');
+      b.textContent = labels[i];
+      b.onclick = () => { buzz(); send({ t: 'config', key: el.dataset.key, v }); };
+      b.dataset.v = String(v);
+      el.appendChild(b);
+    });
+  });
+
+  function buzz() { try { navigator.vibrate && navigator.vibrate(25); } catch (e) {} }
+  document.querySelectorAll('[data-act]').forEach(b => {
+    b.onclick = () => { buzz(); send({ t: 'action', name: b.dataset.act }); };
+  });
+
+  function digits(n) { return [...String(n)].map(d => `<span style="color:${COLORS(d)}">${d}</span>`).join(''); }
+  const STAR = on => `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z" fill="${on ? '#ffc93c' : 'rgba(255,255,255,.25)'}" stroke="${on ? '#e0a514' : 'none'}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  function render() {
+    const s = state;
+    if (!s) return;
+    document.querySelectorAll('.seg').forEach(el => {
+      const cur = String(s.cfg[el.dataset.key]);
+      [...el.children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === cur));
+    });
+    if (s.screen === 'game') {
+      if (s.paused) { view('vPause'); return; }
+      view('vGame');
+      $('num').innerHTML = s.num != null ? digits(s.num) : '';
+      $('next').textContent = s.next != null ? s.next : 'fim';
+      $('dots').innerHTML = s.statuses.map((st, i) => `<i class="${st || (i === s.idx ? 'cur' : '')}"></i>`).join('');
+      document.querySelectorAll('#vGame [data-act]').forEach(b => {
+        const a = b.dataset.act;
+        b.disabled = (s.busy && a !== 'pause') || (a === 'back' && s.idx === 0);
+      });
+    } else if (s.screen === 'result' && s.result) {
+      view('vResult');
+      $('stars').innerHTML = [0, 1, 2].map(i => STAR(i < s.result.stars)).join('');
+      $('rOk').textContent = s.result.ok;
+      $('rSkip').textContent = s.result.skip;
+      $('rTime').textContent = typeof s.result.time === 'number' ? mmss(s.result.time) : s.result.time;
+    } else {
+      view('vHome');
+    }
+  }
+
+  $('btnCode').onclick = () => { code = $('codeIn').value.trim(); connect(); };
+  $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnCode').click(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && (!ws || ws.readyState > 1) && code) connect();
+  });
+
+  connect();
+})();
+</script>
+</body>
+</html>

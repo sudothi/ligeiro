@@ -16,18 +16,29 @@ Jogo para atendimentos de psicopedagogia: aparece um número, a criança mexe os
 - Página de anéis de papel para imprimir.
 - Funciona sem internet (fontes embutidas). A voz usa as vozes em português do Windows.
 
-Na etapa 2 o celular do profissional vai acionar as mesmas ações (Certo, Repetir, Pular, Voltar, Pausar) pela rede local. O código já expõe `Game.action('correct' | 'repeat' | 'skip' | 'back' | 'pause')` para isso.
+## Etapa 2 (pronta): controle pelo celular
+- Na tela inicial, clique em **Controlar pelo celular**. Aparece um QR code e o código da sala (4 números).
+- O celular precisa estar no **mesmo Wi-Fi** do computador. Não usa internet.
+- Aponte a câmera do celular para o QR code (ou digite o endereço mostrado no navegador do celular).
+- No celular: escolher algarismos/números/voz/sons, **Jogar!**, **Certo!**, Repetir, Pular, Voltar, Pausar, Encerrar rodada, Jogar de novo e Início. O celular também mostra o número que está na tela e o próximo.
+- Com o celular conectado, a barra de botões do computador some (para a criança não apertar). O teclado continua funcionando.
+- **Novo código** desconecta os celulares e gera outro código.
+- Na primeira vez, o Windows pergunta se libera o acesso à rede: marque **Redes privadas** e clique em Permitir. Se a rede Wi-Fi estiver marcada como "Pública" no Windows, o celular não conecta; mude para "Privada".
 
 ## Rodar no computador
 1. Instale o Node.js (versão 20 ou mais nova).
 2. Nesta pasta: `npm install` e depois `npm start`.
 
 Para gerar o instalador do Windows: `npm run dist` (gera em `dist/`).
-Versão pronta para testar: `../versoes/Dedos-Ligeiros-0.2.0-windows.zip (pasta do projeto no claude.ai)` (descompacte e abra `Dedos Ligeiros.exe`).
+Para atualizar depois de mudanças: `git pull` e `npm install`, depois `npm start`.
 
 ## Estrutura
 - `src/` o jogo (HTML, CSS, JavaScript), o mesmo código servirá ao app Android do tablet.
 - `src/js/game.js` fluxo do jogo e ações do profissional.
 - `src/js/mascot.js` o mascote Dedé (SVG, humores: happy, cheer, think, oops).
-- `electron/main.js` janela do app no PC (na etapa 2 recebe o servidor local).
+- `electron/main.js` janela do app no PC.
+- `electron/server.js` servidor local (porta 8787) que entrega a página do celular e recebe os comandos (WebSocket, com código da sala).
+- `electron/preload.js` ponte entre o jogo e o servidor.
+- `src/js/remote.js` QR code no jogo e reação aos comandos do celular.
+- `remote/index.html` a página de controle que abre no celular.
 - `build/icon.png` ícone do app.

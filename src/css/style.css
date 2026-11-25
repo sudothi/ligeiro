@@ -149,6 +149,28 @@ button:focus-visible { outline: 4px solid var(--yellow); outline-offset: 3px; }
 .overlay .box { background: var(--card); border-radius: var(--r-lg); box-shadow: 0 10px 0 var(--white-edge); padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
 .overlay h2 { font-family: var(--display); margin: 0; font-size: 34px; }
 
+/* ---------- phone remote ---------- */
+.home-links { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.ph-ico { width: 16px; height: 24px; border: 3px solid currentColor; border-radius: 5px; position: relative; display: inline-block; flex: none; }
+.ph-ico::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
+.phonebtn { font-size: 19px; padding: 10px 20px; }
+.phonebtn.on { --c: var(--green); --e: var(--green-edge); --t: #fff; }
+.topright { display: flex; align-items: center; gap: 10px; }
+.phonechip { display: inline-flex; align-items: center; gap: 8px; background: var(--green); }
+.phonechip .ph-ico { width: 12px; height: 18px; border-width: 2px; }
+body.phone-on #controls { display: none; }
+.connect-box { max-width: min(520px, 94vw); text-align: center; gap: 10px; max-height: 94vh; overflow-y: auto; }
+.connect-box h2 { font-size: 30px; }
+.connect-help, .connect-url { margin: 0; font-weight: 700; color: var(--ink-soft); }
+.connect-url b { color: var(--ink); font-size: 18px; user-select: text; -webkit-user-select: text; word-break: break-all; }
+#qrImg { width: min(260px, 40vh); height: auto; aspect-ratio: 1; border-radius: 16px; border: 4px solid var(--card-edge); }
+.roomcode { display: flex; flex-direction: column; align-items: center; }
+.roomcode span { font-weight: 800; color: var(--ink-soft); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+.roomcode b { font-family: var(--display); font-size: 48px; letter-spacing: 10px; line-height: 1.1; color: var(--bg); }
+.connect-status { margin: 0; font-family: var(--display); font-weight: 600; font-size: 20px; }
+.connect-status.ok { color: var(--green-edge); }
+.connect-err { margin: 0; color: var(--coral-edge); font-weight: 800; }
+
 /* ---------- result ---------- */
 #result { justify-content: center; gap: clamp(10px, 2.4vh, 22px); text-align: center; }
 #result .mascot { width: clamp(150px, 26vh, 240px); }

@@ -30,7 +30,10 @@
   <div class="home-actions">
     <button class="btn yellow big" id="btnStart">Jogar!</button>
   </div>
-  <button class="textlink" id="btnRings">Anéis de papel para imprimir</button>
+  <div class="home-links">
+    <button class="btn phonebtn" id="btnPhone" hidden><span class="ph-ico" aria-hidden="true"></span><span id="phoneLabel">Controlar pelo celular</span></button>
+    <button class="textlink" id="btnRings">Anéis de papel para imprimir</button>
+  </div>
 </section>
 
 <!-- GAME -->
@@ -38,7 +41,10 @@
   <div class="topbar">
     <span class="chip" id="levelChip">2 algarismos</span>
     <div class="dots" id="dots" aria-label="Progresso da rodada"></div>
-    <button class="btn iconbtn" id="btnPause" aria-label="Pausar">❚❚</button>
+    <div class="topright">
+      <span class="chip phonechip" id="phoneChip" hidden><span class="ph-ico" aria-hidden="true"></span>Celular</span>
+      <button class="btn iconbtn" id="btnPause" aria-label="Pausar">❚❚</button>
+    </div>
   </div>
   <div class="stage">
     <div class="side left">
@@ -66,6 +72,23 @@
     <h2>Pausado</h2>
     <button class="btn green big" id="btnResume">Continuar</button>
     <button class="btn" id="btnQuit">Encerrar rodada</button>
+  </div>
+</div>
+
+<!-- PHONE CONNECT -->
+<div class="overlay" id="connect" hidden>
+  <div class="box connect-box">
+    <h2>Controlar pelo celular</h2>
+    <p class="connect-help">Conecte o celular no <b>mesmo Wi-Fi</b> deste computador e aponte a câmera para o código.</p>
+    <img id="qrImg" alt="QR code para conectar o celular" width="260" height="260">
+    <div class="roomcode"><span>Código da sala</span><b id="roomCode">----</b></div>
+    <p class="connect-url">ou digite no navegador do celular:<br><b id="roomUrl"></b></p>
+    <p class="connect-status" id="connectStatus">Aguardando o celular…</p>
+    <p class="connect-err" id="connectErr" hidden></p>
+    <div class="home-actions">
+      <button class="btn" id="btnNewCode">Novo código</button>
+      <button class="btn yellow" id="btnConnectClose">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -98,5 +121,6 @@
 <script src="js/audio.js"></script>
 <script src="js/confetti.js"></script>
 <script src="js/game.js"></script>
+<script src="js/remote.js"></script>
 </body>
 </html>

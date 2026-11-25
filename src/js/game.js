@@ -1,7 +1,8 @@
 /* Game flow: home -> game -> result.
    The professional drives the game with actions: correct, repeat, skip, back, pause.
-   In step 1 the actions come from the keyboard and the on-screen bar; in step 2 the
-   phone remote will call Game.action(...) over the local network. */
+   Actions come from the keyboard, the on-screen bar, or the professional's phone
+   (js/remote.js, over the local network). Every change is published through
+   Game.onChange so the phone can mirror the game. */
 (function () {
   const $ = id => document.getElementById(id);
   const DIGIT_COLOR = d => `var(--d${d})`;
@@ -60,10 +61,33 @@
   let paused = false;
   let startedAt = 0;
   let screen = 'home';
+  let lastResult = null;
+
+  /* ---------- change listeners (phone remote) ---------- */
+  const listeners = [];
+  let emitQueued = false;
+  function snapshot() {
+    const cur = rounds[idx];
+    return {
+      screen, paused, busy,
+      idx, total: rounds.length,
+      num: screen === 'game' && cur ? cur.num : null,
+      next: screen === 'game' && rounds[idx + 1] ? rounds[idx + 1].num : null,
+      statuses: rounds.map(r => r.status),
+      cfg: { digits: cfg.digits, rounds: cfg.rounds, voice: cfg.voice, sound: cfg.sound },
+      result: screen === 'result' ? lastResult : null
+    };
+  }
+  function emit() {
+    if (emitQueued) return;
+    emitQueued = true;
+    queueMicrotask(() => { emitQueued = false; const s = snapshot(); listeners.forEach(fn => { try { fn(s); } catch (e) {} }); });
+  }
 
   function show(id) {
     screen = id;
     ['home', 'game', 'result', 'rings'].forEach(s => ($(s).hidden = s !== id));
+    emit();
   }
 
   function start() {
@@ -92,6 +116,7 @@
     card.classList.remove('enter', 'win', 'leave');
     if (anim) { void card.offsetWidth; card.classList.add(anim); }
     renderDots();
+    emit();
     gameMascot.set('happy');
     say(pick(PROMPT));
     if (anim === 'enter') { Audio2.sfx.appear(); setTimeout(() => speakNumber(cur.num), 250); }
@@ -102,6 +127,7 @@
     const card = $('card');
     card.classList.remove('enter', 'win'); void card.offsetWidth; card.classList.add('leave');
     setTimeout(() => { idx++; busy = false; render('enter'); }, 280);
+    emit();
   }
 
   function finish() {
@@ -114,7 +140,9 @@
     const stars = ratio >= 0.8 ? 3 : ratio >= 0.5 ? 2 : 1;
     $('stOk').textContent = ok;
     $('stSkip').textContent = skip;
-    $('stTime').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    const time = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    $('stTime').textContent = time;
+    lastResult = { ok, skip, time, stars, total: rounds.length };
     $('resultTitle').textContent = stars === 3 ? 'Incrível!' : stars === 2 ? 'Muito bem!' : 'Bom treino!';
     $('stars').innerHTML = [1, 2, 3].map(i => starSvg(i <= stars, i)).join('');
     show('result');
@@ -139,7 +167,7 @@
       if (busy) return;
       busy = true; press('btnOk');
       rounds[idx].status = 'ok';
-      renderDots();
+      renderDots(); emit();
       const card = $('card');
       card.classList.remove('enter', 'leave'); void card.offsetWidth; card.classList.add('win');
       gameMascot.set('cheer', 1400);
@@ -155,7 +183,7 @@
       if (busy) return;
       busy = true; press('btnSkip');
       rounds[idx].status = 'skip';
-      renderDots();
+      renderDots(); emit();
       gameMascot.set('oops', 700);
       say('Tudo bem, vamos para o próximo!');
       Audio2.speak(['proximo'], 'Tudo bem, vamos para o próximo!', 1);
@@ -184,12 +212,24 @@
       paused = !paused;
       $('pause').hidden = !paused;
       if (paused) Audio2.hush();
+      emit();
+    },
+    quit() {
+      if (screen !== 'game') return;
+      paused = false; $('pause').hidden = true; finish();
     }
   };
 
+  /* actions that work outside a round */
+  const menuActions = {
+    start() { if (screen !== 'game') { Audio2.sfx.click(); start(); } },
+    home() { if (screen !== 'game' || paused) { paused = false; $('pause').hidden = true; Audio2.hush(); show('home'); homeMascot.set('happy'); } }
+  };
+
   function action(name) {
+    if (menuActions[name]) { menuActions[name](); return true; }
     if (screen !== 'game') return false;
-    if (paused && name !== 'pause') return false;
+    if (paused && name !== 'pause' && name !== 'quit') return false;
     const fn = actions[name];
     if (!fn) return false;
     fn();
@@ -211,7 +251,7 @@
   $('btnBack').onclick = () => action('back');
   $('btnPause').onclick = () => action('pause');
   $('btnResume').onclick = () => action('pause');
-  $('btnQuit').onclick = () => { paused = false; $('pause').hidden = true; finish(); };
+  $('btnQuit').onclick = () => action('quit');
   $('btnStart').onclick = () => { Audio2.sfx.click(); start(); };
   $('btnAgain').onclick = () => { Audio2.sfx.click(); start(); };
   $('btnHome').onclick = () => { Audio2.sfx.click(); show('home'); homeMascot.set('happy'); };
@@ -220,16 +260,26 @@
   $('btnPrint').onclick = () => window.print();
 
   /* ---------- home settings ---------- */
+  const segs = {};
+  const onSet = {};
+  function setConfig(key, v) {
+    if (!segs[key] || !segs[key].values.includes(v)) return false;
+    cfg[key] = v; store.set(key, v);
+    [...segs[key].el.children].forEach((c, i) => c.setAttribute('aria-pressed', segs[key].values[i] === v));
+    if (onSet[key]) onSet[key](v);
+    emit();
+    return true;
+  }
   function seg(el, values, key, label, onChange) {
+    segs[key] = { el, values };
+    onSet[key] = onChange;
     el.innerHTML = '';
     values.forEach(v => {
       const b = document.createElement('button');
       b.textContent = label ? label(v) : v;
       b.setAttribute('aria-pressed', cfg[key] === v);
       b.onclick = () => {
-        cfg[key] = v; store.set(key, v);
-        [...el.children].forEach(c => c.setAttribute('aria-pressed', c === b));
-        if (onChange) onChange(v);
+        setConfig(key, v);
         Audio2.sfx.click();
         homeMascot.set('cheer', 600);
       };
@@ -247,5 +297,10 @@
 
   Audio2.preload(['0','1','2','3','4','5','6','7','8','9','elogio-1','elogio-2','elogio-3','elogio-4','elogio-5','elogio-6','proximo','parabens','de-novo']);
 
-  window.Game = { action, get state() { return { screen, idx, paused, rounds: rounds.map(r => ({ ...r })) }; } };
+  window.Game = {
+    action,
+    setConfig,
+    onChange(fn) { listeners.push(fn); fn(snapshot()); },
+    get state() { return snapshot(); }
+  };
 })();
