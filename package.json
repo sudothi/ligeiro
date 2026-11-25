@@ -28,7 +28,11 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Dedos Ligeiros"
+      "shortcutName": "Dedos Ligeiros",
+      "include": "build/installer.nsh",
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "artifactName": "Dedos-Ligeiros-Instalador-${version}.${ext}"
     }
   },
   "allowScripts": {
