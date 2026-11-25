@@ -2,5 +2,11 @@
   "appId": "br.dedosligeiros.app",
   "appName": "Dedos Ligeiros",
   "webDir": "www",
-  "android": { "backgroundColor": "#5b3fd9" }
+  "android": {
+    "backgroundColor": "#5b3fd9"
+  },
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
 }

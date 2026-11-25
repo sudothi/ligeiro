@@ -247,3 +247,11 @@ body.phone-on #controls { display: none; }
   .screen { position: static; }
   #rings h2 { color: #000; }
 }
+
+/* ---------- Android app: role picker (app/js/role.js) ---------- */
+.overlay.role { background: var(--bg); z-index: 30; }
+.role-box { max-width: min(460px, 94vw); text-align: center; gap: 12px; max-height: 96vh; overflow-y: auto; }
+.role-box .mascot { width: 120px; }
+.role-box h2 { font-size: 28px; }
+.role-box p { margin: -4px 0 6px; font-weight: 700; color: var(--ink-soft); }
+.role-box .btn { width: 100%; }

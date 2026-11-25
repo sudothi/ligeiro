@@ -25,11 +25,14 @@ Jogo para atendimentos de psicopedagogia: aparece um número, a criança mexe os
 - **Novo código** desconecta os celulares e gera outro código.
 - Na primeira vez, o Windows pergunta se libera o acesso à rede: marque **Redes privadas** e clique em Permitir. Se a rede Wi-Fi estiver marcada como "Pública" no Windows, o celular não conecta; mude para "Privada".
 
-## App do tablet (Android)
-- Só o modo com o celular do profissional. O tablet mostra o jogo e o QR code; o celular controla, igual no PC.
-- O APK é gerado automaticamente pelo GitHub a cada mudança e fica em **Releases > tablet** (github.com/sudothi/ligeiro/releases/tag/tablet). Abra esse link no próprio tablet, baixe o `.apk` e instale (o Android pede para permitir "instalar apps desconhecidos" no navegador).
-- O projeto Android fica em `android/` (Capacitor). O servidor local do tablet está em `android/app/src/main/java/br/dedosligeiros/app/LanServer.java`.
-- Para gerar no PC (precisa do Android Studio): `npm run android:sync` e abrir a pasta `android/` no Android Studio.
+## App Android (tablet ou celular)
+Um app só, que ao abrir pergunta **Sou o jogador** ou **Sou o professor**.
+- **Jogador** (tablet): mostra o jogo, o QR code e o código da sala. Sem professor conectado, os botões ficam na tela.
+- **Professor** (celular ou outro tablet com o app): toque em **Ler QR code** e aponte para a tela do jogo, ou digite os 4 números do código (o app procura o jogo no Wi-Fi sozinho). Depois aparecem os controles: Certo, Repetir, Pular, Voltar, Pausar e as configurações da rodada. "Sair" desconecta.
+- O professor no app controla tanto o jogo no tablet quanto o jogo no computador.
+- **Quem tem iPhone** (sem app): aponta a câmera do iPhone para o QR code e controla pelo navegador. É a mesma tela de controles.
+- O APK é gerado automaticamente pelo GitHub a cada mudança e fica em **Releases > tablet** (github.com/sudothi/ligeiro/releases/tag/tablet). Abra esse link no aparelho, baixe o `.apk` e instale (o Android pede para permitir "instalar apps desconhecidos" no navegador).
+- Detalhes técnicos: projeto Android em `android/` (Capacitor). Servidor do tablet em `LanServer.java`; o jogo se anuncia no Wi-Fi pela porta UDP 8786 (`Beacon.java` e `electron/server.js`) para o professor achar pelo código. Telas só do app em `app/`; a tela do professor é `remote/index.html`, a mesma do navegador. Gerar no PC: `npm run android:sync` e abrir `android/` no Android Studio.
 
 ## Rodar no computador
 1. Instale o Node.js (versão 20 ou mais nova).

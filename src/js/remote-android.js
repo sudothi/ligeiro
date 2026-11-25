@@ -17,7 +17,7 @@
   }
 
   window.remoteBridge = {
-    info: async () => withQr(await LS.info()),
+    info: async () => { await LS.start().catch(() => {}); return withQr(await LS.info()); },
     newCode: async () => withQr(await LS.newCode()),
     sendState: state => { LS.sendState({ state: JSON.stringify(state) }).catch(() => {}); },
     onAction: fn => LS.addListener('action', e => fn(e.name)),

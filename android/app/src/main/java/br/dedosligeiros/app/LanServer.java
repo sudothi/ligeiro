@@ -59,10 +59,19 @@ public class LanServer extends NanoWSD {
             try {
                 s.start(0, true); // no read timeout: WebSockets stay open
                 s.timer.scheduleAtFixedRate(s::heartbeat, 10, 10, TimeUnit.SECONDS);
+                s.timer.scheduleAtFixedRate(s::beacon, 0, 1, TimeUnit.SECONDS);
                 return s;
             } catch (IOException e) { last = e; }
         }
         throw last != null ? last : new IOException("Nenhuma porta livre");
+    }
+
+    private java.net.DatagramSocket beaconSock;
+    private void beacon() {
+        try {
+            if (beaconSock == null) { beaconSock = new java.net.DatagramSocket(); beaconSock.setBroadcast(true); }
+            Beacon.announce(beaconSock, getListeningPort());
+        } catch (Exception ignored) {}
     }
 
     public String getCode() { return code; }
@@ -84,6 +93,7 @@ public class LanServer extends NanoWSD {
 
     public void shutdown() {
         timer.shutdownNow();
+        if (beaconSock != null) beaconSock.close();
         for (Client c : clients) { try { c.close(WebSocketFrame.CloseCode.GoingAway, "fim", false); } catch (IOException ignored) {} }
         clients.clear();
         stop();

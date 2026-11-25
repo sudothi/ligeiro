@@ -7,6 +7,7 @@ const path = require('path');
 const os = require('os');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
+const dgram = require('dgram');
 
 const ROOT = path.join(__dirname, '..');
 const REMOTE_DIR = path.join(ROOT, 'remote');
@@ -18,6 +19,23 @@ const TYPES = {
 };
 const ACTIONS = ['correct', 'repeat', 'skip', 'back', 'pause', 'quit', 'start', 'home'];
 const CONFIG_KEYS = ['digits', 'rounds', 'voice', 'sound'];
+// The Android professor app finds games by room code alone: every second the game sends
+// "DEDOSLIGEIROS 1 <port>" to the Wi-Fi broadcast address (no code inside); the app tries
+// the code on each game it hears. Same format as android/.../Beacon.java.
+const BEACON_PORT = 8786;
+
+function broadcastAddresses() {
+  const out = new Set(['255.255.255.255']);
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if ((a.family !== 'IPv4' && a.family !== 4) || a.internal || !a.netmask) continue;
+      const ip = a.address.split('.').map(Number);
+      const mask = a.netmask.split('.').map(Number);
+      out.add(ip.map((b, i) => (b | (~mask[i] & 255))).join('.'));
+    }
+  }
+  return [...out];
+}
 
 function newCode() {
   // 4 digits, no leading zero, easy to read aloud
@@ -98,6 +116,15 @@ function createServer({ onAction, onConfig, onClients }) {
     });
   });
 
+  const udp = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+  udp.on('error', () => {});
+  udp.bind(0, () => { try { udp.setBroadcast(true); } catch (e) {} });
+  const beacon = setInterval(() => {
+    if (!port) return;
+    const msg = Buffer.from(`DEDOSLIGEIROS 1 ${port}`);
+    for (const addr of broadcastAddresses()) udp.send(msg, BEACON_PORT, addr, () => {});
+  }, 1000);
+
   // drop phones that vanished without closing (Wi-Fi dropped, screen locked)
   const beat = setInterval(() => {
     for (const ws of clients) {
@@ -141,8 +168,8 @@ function createServer({ onAction, onConfig, onClients }) {
       clients.clear();
       onClients(0);
     },
-    close() { clearInterval(beat); wss.close(); server.close(); }
+    close() { clearInterval(beat); clearInterval(beacon); try { udp.close(); } catch (e) {} wss.close(); server.close(); }
   };
 }
 
-module.exports = { createServer, lanAddresses };
+module.exports = { createServer, lanAddresses, BEACON_PORT };

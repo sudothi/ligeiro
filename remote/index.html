@@ -89,6 +89,19 @@ header h1 { font-family: var(--display); font-weight: 700; font-size: 22px; marg
 .stats span { color: var(--ink-soft); font-weight: 800; font-size: 13px; }
 h2.title { font-family: var(--display); color: #fff; text-align: center; margin: 0; font-size: 32px; }
 
+.join { display: flex; flex-direction: column; gap: 14px; margin: auto 0; }
+.join h2 { font-family: var(--display); color: #fff; text-align: center; margin: 0; font-size: 28px; }
+.join p { color: #fff; text-align: center; margin: 0; font-weight: 700; opacity: .9; }
+.join .or { color: #fff; text-align: center; font-weight: 800; opacity: .7; }
+.join .codein { width: 100%; }
+.join .err { background: var(--card); color: var(--coral-edge); border-radius: 14px; padding: 10px 12px; text-align: center; font-weight: 800; opacity: 1; }
+.linkbtn { background: none; color: #fff; text-decoration: underline; font-weight: 800; font-size: 15px; padding: 8px; }
+.scan { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; z-index: 20; }
+.scan video { flex: 1; width: 100%; object-fit: cover; min-height: 0; }
+.scan .frame { position: absolute; left: 50%; top: 42%; width: min(70vw, 300px); aspect-ratio: 1; translate: -50% -50%; border: 5px solid var(--yellow); border-radius: 24px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+.scan .bar { padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.scan .bar p { color: #fff; text-align: center; margin: 0; font-weight: 800; }
+header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; }
 .banner { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--ink); color: #fff; font-weight: 800; padding: 12px 14px; border-radius: 14px; text-align: center; }
 </style>
 </head>
@@ -96,7 +109,10 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
 <div class="wrap">
   <header>
     <h1>Dedos Ligeiros</h1>
-    <span class="status" id="status">Conectando…</span>
+    <span style="display:flex;gap:8px;align-items:center">
+      <button class="exit" id="btnExit" hidden>Sair</button>
+      <span class="status" id="status">Conectando…</span>
+    </span>
   </header>
 
   <!-- waiting / errors -->
@@ -110,6 +126,18 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
     <p>Ele aparece na tela do jogo, em "Controlar pelo celular".</p>
     <input class="codein" id="codeIn" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Código da sala">
     <button class="btn yellow" id="btnCode" style="width:230px">Entrar</button>
+  </section>
+
+  <!-- app only: how to join -->
+  <section class="join" id="vJoin" hidden>
+    <h2>Entrar como professor</h2>
+    <p>O celular e o jogo precisam estar no mesmo Wi-Fi.</p>
+    <button class="btn yellow huge" id="btnScan" style="min-height:110px;font-size:30px">Ler QR code</button>
+    <div class="or">ou digite o código da sala</div>
+    <input class="codein" id="joinCode" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Código da sala">
+    <button class="btn green" id="btnJoin">Entrar</button>
+    <p class="err" id="joinErr" hidden></p>
+    <button class="linkbtn" id="btnPlayer">Este aparelho é o do jogador</button>
   </section>
 
   <!-- home: settings + start -->
@@ -163,15 +191,30 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
   </section>
 </div>
 <div class="banner" id="banner" hidden>Reconectando…</div>
+<div class="scan" id="scan" hidden>
+  <video id="cam" playsinline muted></video>
+  <div class="frame" aria-hidden="true"></div>
+  <div class="bar">
+    <p id="scanMsg">Aponte para o QR code na tela do jogo</p>
+    <button class="btn" id="btnScanCancel">Cancelar</button>
+  </div>
+</div>
 
 <script>
 (function () {
   const $ = id => document.getElementById(id);
-  const views = ['vWait', 'vCode', 'vHome', 'vGame', 'vPause', 'vResult'];
+  const views = ['vWait', 'vCode', 'vJoin', 'vHome', 'vGame', 'vPause', 'vResult'];
+  /* Inside the Android app (role "professor") the page is bundled with the app, so the
+     game's address comes from the QR code or from a Wi-Fi search by room code. */
+  const cap = window.Capacitor;
+  const inApp = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
+  const LS = inApp ? cap.registerPlugin('LocalServer') : null;
+  let host = inApp ? '' : location.host;
   const COLORS = n => `var(--d${n})`;
   const params = new URLSearchParams(location.search);
   let code = params.get('c') || '';
   try { if (!code) code = localStorage.getItem('dl-code') || ''; } catch (e) {}
+  try { if (inApp) host = localStorage.getItem('dl-host') || ''; } catch (e) {}
   let ws = null, state = null, retry = null, everConnected = false;
 
   function view(id) { views.forEach(v => { $(v).hidden = v !== id; }); }
@@ -179,28 +222,32 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
 
   function connect() {
     clearTimeout(retry);
-    if (!/^\d{4}$/.test(code)) { view('vCode'); status('Sem código', 'bad'); return; }
+    if (!/^\d{4}$/.test(code) || !host) { askCode(); status('Sem código', 'bad'); return; }
     status('Conectando…');
-    const sock = new WebSocket(`ws://${location.host}/ws?code=${code}`);
+    let sock;
+    try { sock = new WebSocket(`ws://${host}/ws?code=${code}`); } catch (e) { askCode(); return; }
     ws = sock;
     let denied = false;
     sock.onmessage = ev => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'hello') {
         everConnected = true;
-        try { localStorage.setItem('dl-code', code); } catch (e) {}
-        if (params.get('c')) history.replaceState(null, '', '/');
+        try { localStorage.setItem('dl-code', code); if (inApp) localStorage.setItem('dl-host', host); } catch (e) {}
+        if (!inApp && params.get('c')) history.replaceState(null, '', '/');
+        $('btnExit').hidden = !inApp;
         status('Conectado', 'ok'); $('banner').hidden = true;
         if (!state) view('vWait');
       } else if (m.t === 'denied') {
         denied = true; state = null;
         try { localStorage.removeItem('dl-code'); } catch (e) {}
         code = ''; $('codeIn').value = '';
-        view('vCode'); status(everConnected ? 'Código mudou' : 'Código errado', 'bad');
+        askCode(everConnected ? 'O código da sala mudou. Leia o QR code de novo.' : '');
+        status(everConnected ? 'Código mudou' : 'Código errado', 'bad');
       } else if (m.t === 'state') { state = m.state; render(); }
     };
     sock.onclose = () => {
       if (ws !== sock || denied) return;
+      if (inApp && !everConnected) { ws = null; askCode('Não consegui falar com o jogo. Confira se os dois estão no mesmo Wi-Fi e leia o QR code de novo.'); status('Sem conexão', 'bad'); return; }
       status('Sem conexão', 'bad');
       if (everConnected) $('banner').hidden = false;
       retry = setTimeout(connect, 1500);
@@ -264,6 +311,115 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && (!ws || ws.readyState > 1) && code) connect();
   });
+
+  function askCode(err) {
+    clearTimeout(retry);
+    if (!inApp) { view('vCode'); return; }
+    view('vJoin');
+    $('btnExit').hidden = true;
+    $('joinErr').hidden = !err;
+    $('joinErr').textContent = err || '';
+  }
+
+  /* QR content is the browser address: http://IP:PORT/?c=CODE */
+  function fromQr(text) {
+    try {
+      const u = new URL(text.trim());
+      const c = u.searchParams.get('c');
+      if (!/^https?:$/.test(u.protocol) || !/^\d{4}$/.test(c || '')) return null;
+      return { host: u.host, code: c };
+    } catch (e) { return null; }
+  }
+
+  function join(h, c) {
+    host = h; code = c; everConnected = false; state = null;
+    if (ws) { const old = ws; ws = null; try { old.close(); } catch (e) {} }
+    view('vWait');
+    connect();
+  }
+
+  /* Code only: the games on this Wi-Fi announce themselves; try the code on each one. */
+  function tryHost(h, c) {
+    return new Promise(res => {
+      let done = false;
+      const s = new WebSocket(`ws://${h}/ws?code=${c}`);
+      const end = ok => { if (done) return; done = true; try { s.close(); } catch (e) {} res(ok); };
+      s.onmessage = ev => { try { const m = JSON.parse(ev.data); if (m.t === 'hello') end(true); else if (m.t === 'denied') end(false); } catch (e) {} };
+      s.onerror = () => end(false);
+      s.onclose = () => end(false);
+      setTimeout(() => end(false), 3000);
+    });
+  }
+  async function joinByCode() {
+    const c = $('joinCode').value.trim();
+    if (!/^\d{4}$/.test(c)) { askCode('O código tem 4 números.'); return; }
+    $('btnJoin').disabled = true; $('btnJoin').textContent = 'Procurando o jogo…';
+    try {
+      const r = await LS.scan({ ms: 2500 });
+      const hosts = (r && r.hosts) || [];
+      for (const h of hosts) {
+        if (await tryHost(h, c)) { join(h, c); return; }
+      }
+      askCode(hosts.length ? 'Achei o jogo, mas o código não confere. Confira os 4 números.'
+                           : 'Não achei nenhum jogo neste Wi-Fi. Confira se os dois estão na mesma rede, ou leia o QR code.');
+    } catch (e) {
+      askCode('Não deu para procurar o jogo. Tente ler o QR code.');
+    } finally {
+      $('btnJoin').disabled = false; $('btnJoin').textContent = 'Entrar';
+    }
+  }
+
+  let scanStream = null, scanTimer = null;
+  async function startScan() {
+    $('scan').hidden = false;
+    $('scanMsg').textContent = 'Aponte para o QR code na tela do jogo';
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    } catch (e) {
+      stopScan(); askCode('Sem acesso à câmera. Permita a câmera para o app nas configurações do Android, ou digite o código.');
+      return;
+    }
+    const v = $('cam'); v.srcObject = scanStream; await v.play().catch(() => {});
+    const cv = document.createElement('canvas'); const cx = cv.getContext('2d', { willReadFrequently: true });
+    const tick = () => {
+      if (!scanStream) return;
+      if (v.videoWidth) {
+        const k = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight));
+        cv.width = Math.round(v.videoWidth * k); cv.height = Math.round(v.videoHeight * k);
+        cx.drawImage(v, 0, 0, cv.width, cv.height);
+        const img = cx.getImageData(0, 0, cv.width, cv.height);
+        const hit = window.jsQR && jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (hit) {
+          const j = fromQr(hit.data);
+          if (j) { buzz(); stopScan(); join(j.host, j.code); return; }
+          $('scanMsg').textContent = 'Esse QR code não é do Dedos Ligeiros';
+        }
+      }
+      scanTimer = setTimeout(tick, 150);
+    };
+    tick();
+  }
+  function stopScan() {
+    clearTimeout(scanTimer);
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+    $('cam').srcObject = null;
+    $('scan').hidden = true;
+  }
+
+  if (inApp) {
+    $('btnScan').onclick = () => { buzz(); startScan(); };
+    $('btnScanCancel').onclick = stopScan;
+    $('btnJoin').onclick = joinByCode;
+    $('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinByCode(); });
+    $('btnPlayer').onclick = () => { try { localStorage.setItem('dl-role', 'player'); } catch (e) {} location.href = '../index.html'; };
+    $('btnExit').onclick = () => {
+      if (ws) { const old = ws; ws = null; try { old.close(); } catch (e) {} }
+      try { localStorage.removeItem('dl-host'); } catch (e) {}
+      state = null; $('banner').hidden = true; askCode();
+    };
+    // Android back button: close the camera first
+    document.addEventListener('backbutton', () => { if (scanStream) stopScan(); });
+  }
 
   connect();
 })();
