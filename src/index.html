@@ -32,7 +32,36 @@
   </div>
   <div class="home-links">
     <button class="btn phonebtn" id="btnPhone" hidden><span class="ph-ico" aria-hidden="true"></span><span id="phoneLabel">Controlar pelo celular</span></button>
-    <button class="textlink" id="btnRings">Anéis de papel para imprimir</button>
+    <div class="home-small">
+      <button class="textlink" id="btnAlunos">Alunos e relatórios</button>
+      <button class="textlink" id="btnRings">Anéis de papel para imprimir</button>
+    </div>
+  </div>
+</section>
+
+<!-- NAME -->
+<section id="name" class="screen" hidden>
+  <div class="name-top">
+    <button class="btn" id="btnNameBack">← Voltar</button>
+    <button class="btn" id="btnNameSkip">Jogar sem nome</button>
+  </div>
+  <div class="name-hero">
+    <div class="mascot" id="nameMascot"></div>
+    <h2 id="nameAsk">Qual é o seu nome?</h2>
+  </div>
+  <div class="typed" id="nameTyped" aria-live="polite"></div>
+  <div class="kbd" id="kbd"></div>
+  <button class="btn green big" id="btnNameOk" disabled>Pronto!</button>
+</section>
+
+<!-- ALUNOS (professional, behind a PIN) -->
+<section id="alunos" class="screen" hidden>
+  <div class="alunos-wrap">
+    <div class="alunos-head">
+      <button class="btn" id="btnAlunosBack">← Início</button>
+      <h2>Alunos</h2>
+    </div>
+    <div id="alunosPanel"></div>
   </div>
 </section>
 
@@ -75,6 +104,20 @@
   </div>
 </div>
 
+<!-- PIN -->
+<div class="overlay" id="pinBox" hidden>
+  <div class="box pin-box">
+    <h2 id="pinTitle">PIN do professor</h2>
+    <p id="pinHelp">Digite o PIN de 4 números.</p>
+    <input id="pinIn" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="PIN">
+    <p class="connect-err" id="pinErr" hidden></p>
+    <div class="home-actions">
+      <button class="btn" id="btnPinCancel">Cancelar</button>
+      <button class="btn green" id="btnPinOk">Entrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- PHONE CONNECT -->
 <div class="overlay" id="connect" hidden>
   <div class="box connect-box">
@@ -104,6 +147,7 @@
   </div>
   <div class="home-actions">
     <button class="btn yellow big" id="btnAgain">Jogar de novo</button>
+    <button class="btn" id="btnNewKid">Outra criança</button>
     <button class="btn" id="btnHome">Início</button>
   </div>
 </section>
@@ -120,7 +164,11 @@
 <script src="js/mascot.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/confetti.js"></script>
+<script src="js/students.js"></script>
+<script src="js/report.js"></script>
+<script src="js/alunos-ui.js"></script>
 <script src="js/game.js"></script>
+<script src="js/alunos-local.js"></script>
 <script src="js/remote.js"></script>
 </body>
 </html>

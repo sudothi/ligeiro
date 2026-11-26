@@ -102,8 +102,30 @@ h2.title { font-family: var(--display); color: #fff; text-align: center; margin:
 .scan .bar { padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
 .scan .bar p { color: #fff; text-align: center; margin: 0; font-weight: 800; }
 header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(255,255,255,.14); padding: 5px; border-radius: 16px; }
+.tabs button { background: none; color: #fff; font-family: var(--display); font-weight: 600; font-size: 18px; padding: 9px; border-radius: 12px; }
+.tabs button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+.num.marks { flex-wrap: wrap; }
+.num .dg { background: none; font: inherit; color: inherit; padding: 0 6px; border-radius: 12px; line-height: 1.05; border: 3px solid transparent; }
+.num .dg.on { border-color: var(--coral); background: #ffe5e5; text-decoration: underline wavy var(--coral); }
+.hint { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-top: 4px; }
+.typedname { font-family: var(--display); font-weight: 700; font-size: 44px; text-align: center; min-height: 56px; letter-spacing: 2px; word-break: break-all; }
+.typedname .ph { color: var(--card-edge); }
+.kids { display: flex; flex-wrap: wrap; gap: 8px; }
+.kids button { background: #f1eefc; box-shadow: 0 4px 0 var(--card-edge); border-radius: 12px; padding: 8px 12px; font-family: var(--display); font-weight: 600; font-size: 18px; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; min-width: 0; font: inherit; font-weight: 700; font-size: 18px; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--card-edge); }
+.kidchip { color: #fff; text-align: center; font-weight: 800; margin: -6px 0 0; }
+#printArea { display: none; }
+@media print {
+  body { background: #fff; }
+  .wrap, .banner, .scan { display: none !important; }
+  #printArea { display: block !important; }
+}
 .banner { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--ink); color: #fff; font-weight: 800; padding: 12px 14px; border-radius: 14px; text-align: center; }
 </style>
+<script src="/js/report.js"></script>
+<script src="/js/alunos-ui.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -114,6 +136,10 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
       <span class="status" id="status">Conectando…</span>
     </span>
   </header>
+  <div class="tabs" id="tabs" hidden>
+    <button id="tabGame" aria-pressed="true">Jogo</button>
+    <button id="tabAlunos" aria-pressed="false">Alunos</button>
+  </div>
 
   <!-- waiting / errors -->
   <section class="msg" id="vWait">
@@ -151,11 +177,28 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
     <button class="btn yellow huge" data-act="start">Jogar!</button>
   </section>
 
+  <!-- the child types the name on the game screen; the professor follows and can help -->
+  <section id="vName" hidden style="display:flex;flex-direction:column;gap:14px">
+    <h2 class="title" style="font-size:24px">A criança está digitando o nome</h2>
+    <div class="card"><div class="typedname" id="typedName"></div></div>
+    <button class="btn green huge" data-act="nameDone" style="min-height:96px;font-size:32px">Pronto</button>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl" style="font-family:var(--display);font-weight:600">Corrigir o nome</div>
+      <div class="row"><input id="fixName" maxlength="16" autocomplete="off" aria-label="Nome"><button class="btn" id="btnFixName">Usar</button></div>
+      <div class="lbl" style="font-family:var(--display);font-weight:600">Ou escolher quem já jogou</div>
+      <div class="kids" id="kidList"><span class="hint">Carregando…</span></div>
+    </div>
+    <div class="grid2">
+      <button class="btn" data-act="home">← Voltar</button>
+      <button class="btn" data-act="nameSkip">Jogar sem nome</button>
+    </div>
+  </section>
+
   <!-- game -->
   <section id="vGame" hidden style="display:flex;flex-direction:column;gap:14px;flex:1">
     <div class="dots" id="dots"></div>
     <div class="card now">
-      <div><div class="lbl">Na tela</div><div class="num" id="num"></div></div>
+      <div><div class="lbl">Na tela</div><div class="num marks" id="num"></div><div class="hint">Errou um algarismo? Toque nele (opcional)</div></div>
       <div><div class="lbl" style="text-align:right">Próximo</div><div class="next" id="next">–</div></div>
     </div>
     <div class="spacer"></div>
@@ -180,16 +223,26 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
   <!-- result -->
   <section id="vResult" hidden style="display:flex;flex-direction:column;gap:14px;margin:auto 0">
     <h2 class="title">Rodada terminada!</h2>
+    <p class="kidchip" id="rKid" hidden></p>
     <div class="stars" id="stars"></div>
     <div class="card stats">
       <div><b id="rOk">0</b><span>acertos</span></div>
       <div><b id="rSkip">0</b><span>pulados</span></div>
       <div><b id="rTime">0:00</b><span>tempo</span></div>
     </div>
-    <button class="btn yellow huge" data-act="start">Jogar de novo</button>
-    <button class="btn" data-act="home">Início</button>
+    <button class="btn yellow huge" data-act="again">Jogar de novo</button>
+    <div class="grid2">
+      <button class="btn" data-act="newKid">Outra criança</button>
+      <button class="btn" data-act="home">Início</button>
+    </div>
+  </section>
+
+  <!-- teacher: children and reports -->
+  <section id="vAlunos" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div id="alunosPanel"></div>
   </section>
 </div>
+<div id="printArea"></div>
 <div class="banner" id="banner" hidden>Reconectando…</div>
 <div class="scan" id="scan" hidden>
   <video id="cam" playsinline muted></video>
@@ -203,7 +256,10 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
 <script>
 (function () {
   const $ = id => document.getElementById(id);
-  const views = ['vWait', 'vCode', 'vJoin', 'vHome', 'vGame', 'vPause', 'vResult'];
+  const views = ['vWait', 'vCode', 'vJoin', 'vHome', 'vName', 'vGame', 'vPause', 'vResult', 'vAlunos'];
+  let tab = 'game';
+  let rpcId = 1;
+  const pending = new Map();
   /* Inside the Android app (role "professor") the page is bundled with the app, so the
      game's address comes from the QR code or from a Wi-Fi search by room code. */
   const cap = window.Capacitor;
@@ -243,7 +299,11 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
         code = ''; $('codeIn').value = '';
         askCode(everConnected ? 'O código da sala mudou. Leia o QR code de novo.' : '');
         status(everConnected ? 'Código mudou' : 'Código errado', 'bad');
-      } else if (m.t === 'state') { state = m.state; render(); }
+      } else if (m.t === 'state') { const prev = state; state = m.state; render(prev); }
+      else if (m.t === 'res' && pending.has(m.id)) {
+        const p = pending.get(m.id); pending.delete(m.id); clearTimeout(p.timer);
+        if (m.e) p.reject(new Error(m.e)); else p.resolve(m.r);
+      }
     };
     sock.onclose = () => {
       if (ws !== sock || denied) return;
@@ -252,6 +312,15 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
       if (everConnected) $('banner').hidden = false;
       retry = setTimeout(connect, 1500);
     };
+  }
+
+  function rpc(method, ...args) {
+    return new Promise((resolve, reject) => {
+      const id = rpcId++;
+      if (!send({ t: 'req', id, m: method, a: args })) { reject(new Error('Sem conexão com o jogo.')); return; }
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error('O jogo não respondeu.')); }, 15000);
+      pending.set(id, { resolve, reject, timer });
+    });
   }
 
   function send(msg) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(msg)); return true; } return false; }
@@ -274,13 +343,36 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
     b.onclick = () => { buzz(); send({ t: 'action', name: b.dataset.act }); };
   });
 
-  function digits(n) { return [...String(n)].map(d => `<span style="color:${COLORS(d)}">${d}</span>`).join(''); }
+  function digits(n, marks) {
+    return [...String(n)].map((d, i) => `<button class="dg${marks & (1 << i) ? ' on' : ''}" data-pos="${i}" style="color:${COLORS(d)}" aria-label="Marcar o ${d} como errado">${d}</button>`).join('');
+  }
+  $('num').addEventListener('click', e => {
+    const b = e.target.closest('[data-pos]'); if (!b) return;
+    buzz(); send({ t: 'action', name: 'mark', arg: +b.dataset.pos });
+  });
+  const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  async function loadKids() {
+    try {
+      const kids = await rpc('list');
+      $('kidList').innerHTML = kids.length ? kids.slice(0, 30).map(k => `<button data-kid="${k.id}">${escH(k.name)}</button>`).join('') : '<span class="hint">Ninguém ainda.</span>';
+    } catch (e) { $('kidList').innerHTML = '<span class="hint">Não deu para carregar a lista.</span>'; }
+  }
+  $('kidList').addEventListener('click', e => {
+    const b = e.target.closest('[data-kid]'); if (!b) return;
+    buzz(); send({ t: 'action', name: 'namePick', arg: +b.dataset.kid });
+  });
+  $('btnFixName').onclick = () => {
+    const v = $('fixName').value.trim(); if (!v) return;
+    buzz(); send({ t: 'action', name: 'nameSet', arg: v }); $('fixName').value = '';
+  };
   const STAR = on => `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z" fill="${on ? '#ffc93c' : 'rgba(255,255,255,.25)'}" stroke="${on ? '#e0a514' : 'none'}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
   const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  function render() {
+  function render(prev) {
     const s = state;
     if (!s) return;
+    $('tabs').hidden = false;
+    if (tab === 'alunos') { view('vAlunos'); return; }
     document.querySelectorAll('.seg').forEach(el => {
       const cur = String(s.cfg[el.dataset.key]);
       [...el.children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === cur));
@@ -288,7 +380,7 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
     if (s.screen === 'game') {
       if (s.paused) { view('vPause'); return; }
       view('vGame');
-      $('num').innerHTML = s.num != null ? digits(s.num) : '';
+      $('num').innerHTML = s.num != null ? digits(s.num, s.marks || 0) : '';
       $('next').textContent = s.next != null ? s.next : 'fim';
       $('dots').innerHTML = s.statuses.map((st, i) => `<i class="${st || (i === s.idx ? 'cur' : '')}"></i>`).join('');
       document.querySelectorAll('#vGame [data-act]').forEach(b => {
@@ -301,10 +393,58 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
       $('rOk').textContent = s.result.ok;
       $('rSkip').textContent = s.result.skip;
       $('rTime').textContent = typeof s.result.time === 'number' ? mmss(s.result.time) : s.result.time;
+      $('rKid').hidden = !s.result.kid; $('rKid').textContent = s.result.kid ? `Salvo na ficha de ${s.result.kid}` : '';
+    } else if (s.screen === 'name') {
+      view('vName');
+      $('typedName').innerHTML = s.name ? escH(s.name) : '<span class="ph">…</span>';
+      if (!prev || prev.screen !== 'name') loadKids();
     } else {
       view('vHome');
     }
   }
+
+  /* ---------- tabs: game controls / children and reports ---------- */
+  let alunosUi = null;
+  function setTab(t) {
+    tab = t;
+    $('tabGame').setAttribute('aria-pressed', t === 'game');
+    $('tabAlunos').setAttribute('aria-pressed', t === 'alunos');
+    if (t === 'alunos') {
+      view('vAlunos');
+      if (!window.AlunosUI) { $('alunosPanel').innerHTML = '<p class="hint" style="color:#fff">Não deu para carregar esta parte. Atualize o jogo no computador ou tablet.</p>'; return; }
+      if (!alunosUi) alunosUi = window.AlunosUI.mount($('alunosPanel'), remoteApi, {
+        extraTop: '<button class="al-btn" data-x="resetPin">Apagar PIN do jogo</button>',
+        onRender: el => { const b = el.querySelector('[data-x=resetPin]'); if (b) b.onclick = async () => { await rpc('resetPin'); b.textContent = 'PIN apagado'; b.disabled = true; }; }
+      });
+      else alunosUi.refresh();
+    } else render();
+  }
+  $('tabGame').onclick = () => setTab('game');
+  $('tabAlunos').onclick = () => setTab('alunos');
+
+  async function printDoc(d) {
+    const html = window.Report.page(d.title, d.body, inApp ? 'css/fonts.css' : '/css/fonts.css');
+    if (inApp) { await LS.print({ html, name: d.file }); return; }
+    $('printArea').innerHTML = `<style>${window.Report.CSS}</style><div style="font-family:Fredoka,sans-serif;color:#5b3fd9;font-weight:700;margin-bottom:8px">Dedos Ligeiros · relatório</div>${d.body}`;
+    const old = document.title; document.title = d.file;
+    await new Promise(r => setTimeout(r, 300));
+    window.print();
+    document.title = old;
+  }
+  const remoteApi = {
+    list: () => rpc('list'),
+    stats: (id, period) => rpc('stats', id, period),
+    rename: (id, name) => rpc('rename', id, name),
+    merge: (a, b) => rpc('merge', a, b),
+    remove: id => rpc('remove', id),
+    exportPdf: async (id, period) => printDoc(await rpc('report', id, period))
+  };
+  if (!inApp) remoteApi.exportCsv = async () => {
+    const r = await rpc('csv');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([r.text], { type: 'text/csv;charset=utf-8' }));
+    a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
+  };
 
   $('btnCode').onclick = () => { code = $('codeIn').value.trim(); connect(); };
   $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnCode').click(); });
@@ -314,6 +454,7 @@ header .exit { background: rgba(255,255,255,.18); color: #fff; font-weight: 800;
 
   function askCode(err) {
     clearTimeout(retry);
+    $('tabs').hidden = true; tab = 'game';
     if (!inApp) { view('vCode'); return; }
     view('vJoin');
     $('btnExit').hidden = true;

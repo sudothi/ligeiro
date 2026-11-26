@@ -30,13 +30,18 @@ import fi.iki.elonen.NanoWSD;
 public class LanServer extends NanoWSD {
     public interface Assets { InputStream open(String path) throws IOException; }
     public interface Events {
-        void onAction(String name);
+        void onAction(String name, Object arg);
+        void onRequest(int clientId, int id, String method, String argsJson);
         void onConfig(String key, Object value);
         void onClients(int count);
     }
 
     public static final int[] PORTS = {8787, 8788, 8789, 8790, 8791};
-    private static final String[] ACTIONS = {"correct", "repeat", "skip", "back", "pause", "quit", "start", "home"};
+    private static final String[] ACTIONS = {"correct", "repeat", "skip", "back", "pause", "quit", "start", "home", "again", "newKid",
+        "type", "erase", "nameSet", "nameDone", "namePick", "nameSkip", "mark"};
+    private static final String[] METHODS = {"list", "stats", "rename", "merge", "remove", "report", "csv", "resetPin"};
+    private static final String[] SHARED_JS = {"/js/report.js", "/js/alunos-ui.js"};
+    private final java.util.concurrent.atomic.AtomicInteger nextClient = new java.util.concurrent.atomic.AtomicInteger(1);
     private static final String[] CONFIG_KEYS = {"digits", "rounds", "voice", "sound"};
 
     private final Assets assets;
@@ -84,6 +89,18 @@ public class LanServer extends NanoWSD {
         for (Client c : clients) c.deny();
         clients.clear();
         events.onClients(0);
+    }
+
+    /** Answer to a phone's request; payloadJson is {"r":...} or {"e":"..."}. */
+    public void reply(int clientId, int id, String payloadJson) {
+        for (Client c : clients) {
+            if (c.cid != clientId) continue;
+            try {
+                JSONObject o = new JSONObject(payloadJson);
+                o.put("t", "res"); o.put("id", id);
+                c.sendSafe(o.toString());
+            } catch (Exception ignored) {}
+        }
     }
 
     public void setState(String json) {
@@ -143,7 +160,7 @@ public class LanServer extends NanoWSD {
         if (uri == null || uri.contains("..")) return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "");
         String file;
         if (uri.equals("/") || uri.equals("/index.html")) file = "remote/index.html";
-        else if (uri.startsWith("/fonts/") || uri.equals("/css/fonts.css")) file = uri.substring(1);
+        else if (uri.startsWith("/fonts/") || uri.equals("/css/fonts.css") || contains(SHARED_JS, uri)) file = uri.substring(1);
         else file = "remote" + uri;
         try (InputStream in = assets.open(file)) {
             byte[] data = readAll(in);
@@ -184,6 +201,12 @@ public class LanServer extends NanoWSD {
         return "/ws".equals(session.getUri()) && super.isWebsocketRequested(session);
     }
 
+    private static Object cleanArg(Object a) {
+        if (a instanceof Number) return a;
+        if (a instanceof String) { String s = (String) a; return s.length() > 40 ? s.substring(0, 40) : s; }
+        return null;
+    }
+
     private static boolean contains(String[] list, String v) {
         for (String s : list) if (s.equals(v)) return true;
         return false;
@@ -191,6 +214,7 @@ public class LanServer extends NanoWSD {
 
     private class Client extends WebSocket {
         volatile boolean alive = true;
+        final int cid = nextClient.getAndIncrement();
         private final boolean ok;
 
         Client(IHTTPSession handshake) {
@@ -229,7 +253,13 @@ public class LanServer extends NanoWSD {
             try {
                 JSONObject m = new JSONObject(frame.getTextPayload());
                 String t = m.optString("t");
-                if ("action".equals(t) && contains(ACTIONS, m.optString("name"))) events.onAction(m.optString("name"));
+                if ("action".equals(t) && contains(ACTIONS, m.optString("name"))) events.onAction(m.optString("name"), cleanArg(m.opt("arg")));
+                else if ("req".equals(t) && contains(METHODS, m.optString("m")) && m.opt("id") instanceof Integer) {
+                    org.json.JSONArray a = m.optJSONArray("a");
+                    org.json.JSONArray out = new org.json.JSONArray();
+                    if (a != null) for (int i = 0; i < Math.min(3, a.length()); i++) { Object v = cleanArg(a.opt(i)); out.put(v == null ? JSONObject.NULL : v); }
+                    events.onRequest(cid, m.getInt("id"), m.optString("m"), out.toString());
+                }
                 else if ("config".equals(t) && contains(CONFIG_KEYS, m.optString("key")) && m.has("v")) events.onConfig(m.optString("key"), m.get("v"));
                 else if ("ping".equals(t)) sendSafe("{\"t\":\"pong\"}");
             } catch (Exception ignored) {}

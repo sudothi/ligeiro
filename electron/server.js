@@ -17,7 +17,12 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json', '.ico': 'image/x-icon'
 };
-const ACTIONS = ['correct', 'repeat', 'skip', 'back', 'pause', 'quit', 'start', 'home'];
+const ACTIONS = ['correct', 'repeat', 'skip', 'back', 'pause', 'quit', 'start', 'home', 'again', 'newKid',
+  'type', 'erase', 'nameSet', 'nameDone', 'namePick', 'nameSkip', 'mark'];
+const METHODS = ['list', 'stats', 'rename', 'merge', 'remove', 'report', 'csv', 'resetPin'];
+// files of the game the phone page may load (report charts and the Alunos panel)
+const SHARED_JS = ['/js/report.js', '/js/alunos-ui.js'];
+const cleanArg = a => (typeof a === 'number' && isFinite(a)) ? a : (typeof a === 'string' ? a.slice(0, 40) : undefined);
 const CONFIG_KEYS = ['digits', 'rounds', 'voice', 'sound'];
 // The Android professor app finds games by room code alone: every second the game sends
 // "DEDOSLIGEIROS 1 <port>" to the Wi-Fi broadcast address (no code inside); the app tries
@@ -72,7 +77,9 @@ function safeJoin(base, rel) {
   return p.startsWith(base + path.sep) || p === base ? p : null;
 }
 
-function createServer({ onAction, onConfig, onClients }) {
+function createServer({ onAction, onConfig, onClients, onRequest }) {
+  let nextClient = 1;
+  const byId = new Map();
   let code = newCode();
   let state = null;
   let port = null;
@@ -82,13 +89,13 @@ function createServer({ onAction, onConfig, onClients }) {
     const url = new URL(req.url, 'http://x');
     let file = null;
     if (url.pathname === '/' || url.pathname === '/index.html') file = path.join(REMOTE_DIR, 'index.html');
-    else if (url.pathname.startsWith('/fonts/') || url.pathname === '/css/fonts.css') file = safeJoin(SRC_DIR, url.pathname);
+    else if (url.pathname.startsWith('/fonts/') || url.pathname === '/css/fonts.css' || SHARED_JS.includes(url.pathname)) file = safeJoin(SRC_DIR, url.pathname);
     else file = safeJoin(REMOTE_DIR, url.pathname);
     if (!file) { res.writeHead(400); res.end(); return; }
     serveFile(res, file);
   });
 
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 8192 });
 
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, 'http://x');
@@ -100,6 +107,8 @@ function createServer({ onAction, onConfig, onClients }) {
         return;
       }
       clients.add(ws);
+      ws.cid = nextClient++;
+      byId.set(ws.cid, ws);
       ws.isAlive = true;
       ws.on('pong', () => { ws.isAlive = true; });
       ws.send(JSON.stringify({ t: 'hello' }));
@@ -108,11 +117,15 @@ function createServer({ onAction, onConfig, onClients }) {
       ws.on('message', raw => {
         let m;
         try { m = JSON.parse(raw); } catch (e) { return; }
-        if (m.t === 'action' && ACTIONS.includes(m.name)) onAction(m.name);
+        if (m.t === 'action' && ACTIONS.includes(m.name)) onAction(m.name, cleanArg(m.arg));
+        else if (m.t === 'req' && METHODS.includes(m.m) && Number.isInteger(m.id)) {
+          const args = Array.isArray(m.a) ? m.a.slice(0, 3).map(cleanArg) : [];
+          if (onRequest) onRequest(ws.cid, m.id, m.m, args);
+        }
         else if (m.t === 'config' && CONFIG_KEYS.includes(m.key)) onConfig(m.key, m.v);
         else if (m.t === 'ping') ws.send(JSON.stringify({ t: 'pong' }));
       });
-      ws.on('close', () => { clients.delete(ws); onClients(clients.size); });
+      ws.on('close', () => { clients.delete(ws); byId.delete(ws.cid); onClients(clients.size); });
     });
   });
 
@@ -162,6 +175,10 @@ function createServer({ onAction, onConfig, onClients }) {
     listen,
     info,
     setState(s) { state = s; broadcast({ t: 'state', state }); },
+    reply(cid, id, payload) {
+      const ws = byId.get(cid);
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.assign({ t: 'res', id }, payload)));
+    },
     newCode() {
       code = newCode();
       for (const ws of clients) { try { ws.send(JSON.stringify({ t: 'denied' })); ws.close(4001, 'codigo'); } catch (e) {} }

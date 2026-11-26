@@ -48,9 +48,13 @@
   $('btnNewCode').onclick = async () => fill(await bridge.newCode());
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('connect').hidden) { e.stopImmediatePropagation(); close(); } }, true);
 
-  bridge.onAction(name => {
+  bridge.onAction((name, arg) => {
     if (!$('connect').hidden) close();
-    Game.action(name);
+    Game.action(name, arg);
+  });
+  if (bridge.onRequest) bridge.onRequest(async (cid, id, m, a) => {
+    try { bridge.reply(cid, id, { r: await window.AlunosHost.handle(m, a) }); }
+    catch (e) { bridge.reply(cid, id, { e: String(e && e.message || e) }); }
   });
   bridge.onConfig((key, v) => Game.setConfig(key, v));
   bridge.onClients(n => {

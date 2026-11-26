@@ -20,8 +20,16 @@
     info: async () => { await LS.start().catch(() => {}); return withQr(await LS.info()); },
     newCode: async () => withQr(await LS.newCode()),
     sendState: state => { LS.sendState({ state: JSON.stringify(state) }).catch(() => {}); },
-    onAction: fn => LS.addListener('action', e => fn(e.name)),
+    onAction: fn => LS.addListener('action', e => fn(e.name, e.arg)),
+    onRequest: fn => LS.addListener('req', e => fn(e.cid, e.id, e.m, e.a ? JSON.parse(e.a) : [])),
+    reply: (cid, id, payload) => { LS.reply({ cid, id, payload: JSON.stringify(payload) }).catch(() => {}); },
     onConfig: fn => LS.addListener('config', e => fn(e.key, e.value)),
     onClients: fn => LS.addListener('clients', e => fn(e.count))
+  };
+
+  /* children's data: a small file in the app's private storage */
+  window.storageBridge = {
+    load: async () => { const r = await LS.loadData(); return r && r.text ? r.text : null; },
+    save: async text => { await LS.saveData({ text }); }
   };
 })();

@@ -34,6 +34,13 @@ Um app só, que ao abrir pergunta **Sou o jogador** ou **Sou o professor**.
 - O APK é gerado automaticamente pelo GitHub a cada mudança e fica em **Releases > tablet** (github.com/sudothi/ligeiro/releases/tag/tablet). Abra esse link no aparelho, baixe o `.apk` e instale (o Android pede para permitir "instalar apps desconhecidos" no navegador).
 - Detalhes técnicos: projeto Android em `android/` (Capacitor). Servidor do tablet em `LanServer.java`; o jogo se anuncia no Wi-Fi pela porta UDP 8786 (`Beacon.java` e `electron/server.js`) para o professor achar pelo código. Telas só do app em `app/`; a tela do professor é `remote/index.html`, a mesma do navegador. Gerar no PC: `npm run android:sync` e abrir `android/` no Android Studio.
 
+## Nome da criança, estatísticas e relatórios
+- Ao tocar em Jogar, a criança digita o nome (teclado do PC ou teclado grande na tela). "Jogar de novo" mantém a mesma criança; "Outra criança" pede o nome de novo. Pelo celular o professor vê o que está sendo digitado, pode corrigir, escolher da lista ou "Jogar sem nome".
+- Durante o jogo, no celular, tocar num algarismo marca que a criança errou aquele dedo (opcional).
+- Cada rodada é guardada num arquivo pequeno no aparelho do jogo (PC: pasta de dados do app, `alunos.json`; Android: armazenamento do app). Cerca de 120 bytes por rodada. Rodadas com mais de 2 anos viram resumo mensal.
+- **Alunos e relatórios**: no celular (aba Alunos) ou na tela inicial do jogo (com PIN de 4 números). Gráficos de dificuldade por quantidade de algarismos, algarismos difíceis (0 a 9), posição do erro, números mais difíceis, tempo por número e evolução. Corrigir nome, juntar fichas, apagar ficha, exportar PDF e planilha (CSV).
+- Código: `src/js/students.js` (dados e estatísticas), `src/js/report.js` (gráficos), `src/js/alunos-ui.js` (tela Alunos), `src/js/alunos-local.js` (PIN, exportar, pedidos do celular).
+
 ## Rodar no computador
 1. Instale o Node.js (versão 20 ou mais nova).
 2. Nesta pasta: `npm install` e depois `npm start`.
