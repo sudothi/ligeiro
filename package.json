@@ -8,7 +8,10 @@
     "start": "electron .",
     "dist": "electron-builder --win --x64",
     "www": "node scripts/build-www.js",
-    "android:sync": "node scripts/build-www.js && npx cap sync android"
+    "android:sync": "node scripts/build-www.js && npx cap sync android",
+    "release:chave": "node scripts/release.js chave",
+    "release:clinica": "node scripts/release.js gerar clinica",
+    "release:publicar": "node scripts/release.js publicar"
   },
   "devDependencies": {
     "@capacitor/android": "6.2.3",

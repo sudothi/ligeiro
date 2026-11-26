@@ -17,7 +17,7 @@ const html = fs.readFileSync(idx, 'utf8');
 const tag = '<script src="js/remote.js"></script>';
 if (!html.includes(tag)) throw new Error('remote.js tag not found in index.html');
 fs.writeFileSync(idx, html.replace(tag,
-  '<script src="js/vendor/capacitor.js"></script>\n<script src="js/vendor/qrcode.js"></script>\n<script src="js/remote-android.js"></script>\n' + tag + '\n<script src="js/role.js"></script>'));
+  '<script src="js/vendor/capacitor.js"></script>\n<script src="js/vendor/qrcode.js"></script>\n<script src="js/remote-android.js"></script>\n<script src="js/updater-android.js"></script>\n' + tag + '\n<script src="js/role.js"></script>'));
 // the professor screen inside the app is the same page the browser gets, plus the app runtime
 const rp = path.join(www, 'remote', 'index.html');
 const rh = fs.readFileSync(rp, 'utf8');

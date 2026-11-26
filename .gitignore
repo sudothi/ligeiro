@@ -1,3 +1,9 @@
 node_modules/
 dist/
 www/
+# edição da clínica: nunca vai para o GitHub
+config/clinica.json
+config/*.pem
+config/*.jks
+config/android.properties
+src/edition.json

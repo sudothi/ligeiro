@@ -1,0 +1,9 @@
+{
+  "edition": "clinica",
+  "feed": "https://SEU-ENDERECO/atualizacoes/",
+  "publicKey": null,
+  "vps": {
+    "destino": "ubuntu@SEU-SERVIDOR:/var/www/atualizacoes/",
+    "chave": "~/.ssh/SUA-CHAVE"
+  }
+}

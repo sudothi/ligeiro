@@ -4,6 +4,7 @@ const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { createServer } = require('./server');
+const { createUpdater } = require('./updater');
 
 let win = null;
 const send = (ch, ...args) => { if (win && !win.isDestroyed()) win.webContents.send(ch, ...args); };
@@ -19,6 +20,14 @@ ipcMain.handle('remote:info', () => remote.info());
 ipcMain.handle('remote:newCode', () => { remote.newCode(); return remote.info(); });
 ipcMain.on('remote:state', (_e, state) => remote.setState(state));
 ipcMain.on('remote:reply', (_e, cid, id, payload) => remote.reply(cid, id, payload));
+
+/* Updates: checked when the game opens; installed before playing (see src/js/updater-ui.js). */
+const updater = createUpdater();
+ipcMain.handle('update:check', () => updater.check());
+ipcMain.handle('update:install', async () => {
+  try { return await updater.install(p => send('update:progress', p)); }
+  catch (e) { return { ok: false, error: e.message }; }
+});
 
 /* Children's data: one small JSON file in the app's data folder (never leaves this PC). */
 const dataFile = () => path.join(app.getPath('userData'), 'alunos.json');

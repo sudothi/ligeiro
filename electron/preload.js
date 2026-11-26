@@ -21,3 +21,12 @@ contextBridge.exposeInMainWorld('pdfBridge', {
   savePdf: (html, name) => ipcRenderer.invoke('pdf:save', html, name),
   saveText: (text, name) => ipcRenderer.invoke('text:save', text, name)
 });
+
+contextBridge.exposeInMainWorld('updateBridge', {
+  check: () => ipcRenderer.invoke('update:check'),
+  install: onProgress => {
+    const h = (_e, p) => onProgress(p);
+    ipcRenderer.on('update:progress', h);
+    return ipcRenderer.invoke('update:install').finally(() => ipcRenderer.removeListener('update:progress', h));
+  }
+});

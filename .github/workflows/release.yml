@@ -1,0 +1,75 @@
+# Open-source edition: when a version tag (v0.6.0) is pushed, builds the Windows installer
+# and the Android APK with config/aberta.json and publishes them on GitHub Releases with
+# update.json, which the open-edition apps read to update themselves.
+# Nothing here knows about the clinic: its edition is built on the clinic PC (scripts/release.js).
+# Optional repository secrets: DL_SIGN_KEY (PEM, signs update.json), ANDROID_KEYSTORE_B64 +
+# ANDROID_KEY_PASSWORD (fixed APK key, needed for Android updates to install).
+name: Versão aberta
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: node scripts/release.js gerar aberta --sem-android
+        env:
+          DL_SIGN_KEY: ${{ secrets.DL_SIGN_KEY }}
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: 'dist/aberta/*.exe' }
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: npm ci
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: '1' }
+      - name: Chave fixa do APK (se configurada)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/android.jks"
+            printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=dedosligeiros\nkeyPassword=%s\n' "$RUNNER_TEMP/android.jks" "$PW" "$PW" > "$RUNNER_TEMP/android.properties"
+            echo "DL_ANDROID_PROPS=$RUNNER_TEMP/android.properties" >> "$GITHUB_ENV"
+          fi
+      - run: chmod +x android/gradlew && node scripts/release.js gerar aberta --sem-windows
+        env:
+          DL_SIGN_KEY: ${{ secrets.DL_SIGN_KEY }}
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: 'dist/aberta/*.apk' }
+
+  publicar:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dist/aberta, merge-multiple: true }
+      - name: update.json
+        run: node scripts/release.js assinar dist/aberta aberta
+        env:
+          DL_SIGN_KEY: ${{ secrets.DL_SIGN_KEY }}
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          case "$TAG" in v*) ;; *) TAG="v$(node -p "require('./package.json').version")" ;; esac
+          gh release create "$TAG" dist/aberta/* --title "Dedos Ligeiros $TAG" --target "$GITHUB_SHA" \
+            --notes "Windows: baixe o Instalador .exe. Android: baixe o .apk no tablet e instale. Quem já tem o jogo recebe esta versão sozinho ao abrir."
