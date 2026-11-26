@@ -30,9 +30,9 @@
     finish: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.15, i * 0.12))
   };
 
-  /* Recorded voice clips (src/audio/<key>.mp3), played in sequence a bit slower than
-     recorded so children can follow. A missing clip is simply skipped. */
-  const VOICE_RATE = 0.8;
+  /* Recorded voice clips (src/audio/<key>.mp3), played in sequence at the recorded
+     speed (recorded slowly on purpose). A missing clip is simply skipped. */
+  const VOICE_RATE = 1;
   const clipCache = {};
   const clipOk = {};
   let playing = null;
