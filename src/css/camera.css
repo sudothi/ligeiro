@@ -52,3 +52,6 @@
 .opts output { font-weight: 600; color: var(--ink-soft); }
 
 @media (max-width: 900px) { .cam-main { grid-template-columns: 1fr; } }
+.cam-msg small { display: inline-block; max-width: 640px; margin-top: 10px; font-family: var(--body); font-size: 18px; font-weight: 700; opacity: .9; }
+.cam-msg small.code { font-size: 13px; opacity: .6; }
+.cam-msg .btn { margin-top: 16px; font-size: 20px; }

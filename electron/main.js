@@ -105,6 +105,14 @@ function createWindow() {
 
 Menu.setApplicationMenu(null);
 app.whenReady().then(async () => {
+  // webcam test screen: let our own pages use the camera (and list the cameras)
+  const { session } = require('electron');
+  const ours = url => String(url || '').startsWith('file://');
+  session.defaultSession.setPermissionCheckHandler((_wc, perm, origin) => perm === 'media' ? ours(origin) || origin === 'file:///' : true);
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb, details) => {
+    if (perm === 'media') return cb(ours(details.requestingUrl || wc.getURL()) && !(details.mediaTypes || []).includes('audio'));
+    cb(true);
+  });
   try { await remote.listen(); } catch (e) { console.error('Servidor local não iniciou:', e.message); }
   createWindow();
 });

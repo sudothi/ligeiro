@@ -86,14 +86,34 @@ async function openCamera() {
   video.srcObject = stream;
   await video.play();
   const cur = stream.getVideoTracks()[0];
-  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
-  const curId = cur.getSettings().deviceId;
-  $('selCam').innerHTML = devs.map((d, i) => `<option value="${d.deviceId}"${d.deviceId === curId ? ' selected' : ''}>${(d.label || 'Câmera ' + (i + 1)).replace(/[<>&"]/g, '')}</option>`).join('');
+  await listCameras(cur.getSettings().deviceId);
   meter.reset();
+}
+async function listCameras(curId) {
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  $('selCam').innerHTML = devs.length
+    ? devs.map((d, i) => `<option value="${d.deviceId}"${d.deviceId === curId ? ' selected' : ''}>${(d.label || 'Câmera ' + (i + 1)).replace(/[<>&"]/g, '')}</option>`).join('')
+    : '<option value="">Nenhuma câmera encontrada</option>';
+  return devs.length;
+}
+const CAM_ERRORS = {
+  NotAllowedError: 'O Windows bloqueou a câmera. Abra Configurações > Privacidade e segurança > Câmera e ligue "Acesso à câmera", "Permitir que aplicativos acessem a câmera" e "Permitir que aplicativos da área de trabalho acessem a câmera".',
+  NotReadableError: 'A câmera está ocupada ou travada. Feche programas que usam a câmera (Teams, Zoom, WhatsApp, navegador, app Câmera) e clique em Tentar de novo.',
+  NotFoundError: 'Nenhuma câmera foi encontrada. Confira o cabo USB e se a câmera aparece no Gerenciador de Dispositivos do Windows. Em alguns notebooks a câmera tem uma tecla (F8/F10) ou uma tampinha que desliga.',
+  OverconstrainedError: 'A câmera escolhida não aceitou o formato pedido. Escolha outra câmera nos ajustes ou clique em Tentar de novo.'
+};
+function showCameraError(e) {
+  const name = (e && e.name) || 'Erro';
+  const tip = CAM_ERRORS[name] || 'Confira se a webcam está ligada e se outro programa não está usando.';
+  const box = $('loading');
+  box.hidden = false;
+  box.innerHTML = `Não consegui abrir a câmera.<br><small>${tip}</small><br><small class="code">(${name}${e && e.message ? ': ' + String(e.message).replace(/[<>&]/g, '') : ''})</small><br><button class="btn yellow" id="btnCamRetry">Tentar de novo</button>`;
+  $('btnCamRetry').onclick = () => location.reload();
+  setStatus('Câmera não abriu (' + name + '). Veja a mensagem na imagem.', true);
 }
 $('selCam').onchange = async e => {
   opts.deviceId = e.target.value; saveOpts();
-  try { await openCamera(); } catch (err) { setStatus('Não consegui abrir essa câmera: ' + err.message, true); }
+  try { await openCamera(); $('loading').hidden = !!landmarker; } catch (err) { showCameraError(err); }
 };
 
 /* ---------- MediaPipe ---------- */
@@ -322,8 +342,8 @@ function statusFor(sides, hands) {
   try {
     await openCamera();
   } catch (e) {
-    $('loading').textContent = 'Não consegui abrir a câmera. Confira se a webcam está ligada no USB e se outro programa não está usando.';
-    setStatus('Câmera não abriu: ' + (e.message || e.name), true);
+    await listCameras().catch(() => {});
+    showCameraError(e);
     return;
   }
   $('loading').textContent = 'Carregando o reconhecimento das mãos…';
