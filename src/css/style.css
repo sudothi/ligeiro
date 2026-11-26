@@ -316,3 +316,18 @@ body.phone-on #controls { display: none; }
 .clinic-row input { font: inherit; font-size: 16px; padding: 9px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.15); min-width: 0; flex: 1 1 180px; }
 .clinic-msg { color: var(--coral-edge, #c0392b); font-weight: 700; }
 .clinic-row .btn { font-size: 16px; padding: 8px 16px; border-radius: 12px; }
+
+/* ---------- webcam inside the game (PC, js/camera/game-cam.js) ---------- */
+.side.right { align-items: flex-end; }
+.camwin { width: clamp(220px, 26vw, 380px); background: var(--bg-deep); border-radius: var(--r-md); overflow: hidden;
+  box-shadow: 0 6px 0 rgba(0,0,0,.18); position: relative; }
+.camwin canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #2a1f6b; }
+.camwin-msg { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 16 / 9; display: grid; place-items: center; padding: 10px;
+  color: #fff; font-weight: 800; font-size: 14px; text-align: center; }
+.camwin-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #fff; }
+.camwin-bar span { flex: 1; font-size: 13px; font-weight: 800; color: var(--ink-soft); line-height: 1.2; }
+.camwin-bar span.warn { color: var(--coral-edge); }
+.camwin-bar .btn { font-size: 14px; padding: 6px 10px; box-shadow: 0 3px 0 var(--e); }
+.dig { position: relative; transition: opacity .2s; }
+.dig.done::after { content: ""; position: absolute; left: 12%; right: 12%; bottom: -.04em; height: .09em; border-radius: 99px; background: var(--green); }
+.dig.nope { animation: shake .35s; }

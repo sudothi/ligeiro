@@ -226,6 +226,16 @@
       if (screen !== 'game') return;
       paused = false; $('pause').hidden = true; finish();
     },
+    /* the camera saw a wrong finger at this digit position (sets, never clears) */
+    markOn(pos) {
+      const cur = rounds[idx];
+      pos = +pos;
+      if (!cur || busy || !(pos >= 0 && pos < cur.num.length) || cur.marks & (1 << pos)) return;
+      cur.marks = (cur.marks || 0) | (1 << pos);
+      const el = $('card').children[pos];
+      if (el) el.classList.add('marked');
+      emit();
+    },
     /* professor marks which digit position the child got wrong (optional, toggles) */
     mark(pos) {
       const cur = rounds[idx];

@@ -26,6 +26,8 @@
     <div class="seg" id="segVoice" role="group" aria-label="Falar o número"></div>
     <span class="lbl">Sons</span>
     <div class="seg" id="segSound" role="group" aria-label="Efeitos sonoros"></div>
+    <span class="lbl" id="lblCam" hidden>Câmera</span>
+    <div class="seg" id="segCam" role="group" aria-label="Ler os dedos pela câmera" hidden></div>
   </div>
   <div class="home-actions">
     <button class="btn yellow big" id="btnStart">Jogar!</button>
@@ -86,7 +88,13 @@
       <div class="card" id="card"></div>
       <div class="ghost" id="nextNum"></div>
     </div>
-    <div class="side right"></div>
+    <div class="side right">
+      <div class="camwin" id="camWin" hidden>
+        <canvas id="camView" aria-label="Câmera com os números dos dedos"></canvas>
+        <div class="camwin-msg" id="camMsg">Abrindo a câmera…</div>
+        <div class="camwin-bar"><span id="camStatus">&nbsp;</span><button class="btn" id="btnCamCalib">Calibrar</button></div>
+      </div>
+    </div>
   </div>
   <div class="controls" id="controls" aria-label="Controles do profissional">
     <span class="who">Profissional</span>
@@ -187,5 +195,6 @@
 <script src="js/clinica.js"></script>
 <script src="js/remote.js"></script>
 <script src="js/updater-ui.js"></script>
+<script type="module" src="js/camera/game-cam.js"></script>
 </body>
 </html>
