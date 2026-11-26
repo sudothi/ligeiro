@@ -107,7 +107,7 @@ function gerar(edition, flags) {
   let publicKey = cfg.publicKey || null;
   if (!publicKey && edition === 'aberta' && process.env.DL_SIGN_KEY)
     publicKey = crypto.createPublicKey(process.env.DL_SIGN_KEY).export({ type: 'spki', format: 'der' }).toString('base64');
-  fs.writeFileSync(edJson, JSON.stringify({ edition: cfg.edition || edition, feed: cfg.feed, publicKey }, null, 2) + '\n');
+  fs.writeFileSync(edJson, JSON.stringify(Object.assign({ edition: cfg.edition || edition, feed: cfg.feed, publicKey }, cfg.api ? { api: cfg.api } : {}), null, 2) + '\n');
   try {
     if (doWin) {
       run('npx', ['electron-builder', '--win', '--x64', '--publish', 'never', '-c.directories.output=dist/build-win']);

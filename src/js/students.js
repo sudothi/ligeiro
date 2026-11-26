@@ -6,10 +6,17 @@
         flag 1 = certo, 2 = pulado; marks = bitmask of digit positions the professor marked wrong
      m: [[kid, "YYYY-MM", digits, nums, ok, skip, rep, secs, appearances[10], hard[10]]]
         monthly summaries that replace rounds older than KEEP_DAYS
-   About 120 bytes per round of 10 numbers. */
+   About 120 bytes per round of 10 numbers.
+   Clinic edition (PC with window.syncBridge, paired once): every change is also an "op" in the
+   outbox o:[...]; sync() sends it to the clinic server and gets back everyone's kids and rounds,
+   which replace k and r (server ids). Ops not yet sent are replayed on top. Kids are matched across
+   PCs by key (name without accents), so "Ana" on two PCs is one child. */
 (function () {
   const KEEP_DAYS = 730;
-  let data = { v: 1, pin: null, n: 1, k: [], r: [], m: [] };
+  let data = { v: 1, pin: null, n: 1, k: [], r: [], m: [], dev: null, seq: 0, o: [], synced: 0 };
+  const remap = {};          // old kid id -> new kid id after a sync (the game may hold an old one)
+  let syncOn = false;        // this PC is paired with the clinic server
+  let syncing = null, syncTimer = null, lastSync = { ok: null, at: null, error: null, pending: 0 };
   let loaded = null;
   let saveTimer = null;
 
@@ -30,10 +37,15 @@
       if (text) {
         try {
           const d = JSON.parse(text);
-          if (d && d.v === 1 && Array.isArray(d.k) && Array.isArray(d.r)) data = Object.assign({ pin: null, n: 1, m: [] }, d);
+          if (d && d.v === 1 && Array.isArray(d.k) && Array.isArray(d.r)) data = Object.assign({ pin: null, n: 1, m: [], dev: null, seq: 0, o: [], synced: 0 }, d);
         } catch (e) { /* unreadable file: start empty, keep the old file until the next save */ }
       }
-      compact();
+      if (!data.dev) data.dev = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      if (!data.synced) compact();   // with the clinic server, the server keeps every round
+      try { const st = window.syncBridge ? await window.syncBridge.status() : null; syncOn = !!(st && st.paired); } catch (e) {}
+      if (!syncOn) data.o = [];
+      setTimeout(() => sync(), 1500);
+      setInterval(() => sync(), 5 * 60000);
       return data;
     })();
     return loaded;
@@ -53,22 +65,57 @@
   }
 
   /* ---------- children ---------- */
-  function kidById(id) { return data.k.find(k => k[0] === id) || null; }
+  function resolve(id) { let n = 0; while (remap[id] !== undefined && n++ < 20) id = remap[id]; return id; }
+  function kidById(id) { id = resolve(id); return data.k.find(k => k[0] === id) || null; }
+  const kidByKey = key => data.k.find(k => k[2] === key) || null;
+  const newId = () => data.synced ? -(data.n++) : data.n++;   // negative = made here, not on the server yet
+
+  /* ---------- changes, as ops (applied here now, and on the server when synced) ---------- */
+  function apply(op) {
+    if (op.t === 'kid' || op.t === 'round') {
+      let kid = kidByKey(op.key);
+      if (!kid) { kid = [newId(), op.name, op.key]; data.k.push(kid); }
+      if (op.t === 'round') data.r.push([kid[0], op.minute, op.digits, op.nameSecs, op.items]);
+    } else if (op.t === 'rename') {
+      const kid = kidByKey(op.key), to = keyOf(op.name);
+      if (!kid || !to) return;
+      const other = kidByKey(to);
+      if (other && other !== kid) mergeIds(kid[0], other[0]); else { kid[1] = op.name; kid[2] = to; }
+    } else if (op.t === 'merge') {
+      const a = kidByKey(op.from), b = kidByKey(op.into);
+      if (a && b && a !== b) mergeIds(a[0], b[0]);
+    } else if (op.t === 'remove') {
+      const kid = kidByKey(op.key);
+      if (kid) { const id = kid[0]; data.k = data.k.filter(k => k[0] !== id); data.r = data.r.filter(r => r[0] !== id); data.m = data.m.filter(x => x[0] !== id); }
+    }
+  }
+  function mergeIds(fromId, intoId) {
+    for (const r of data.r) if (r[0] === fromId) r[0] = intoId;
+    for (const x of data.m) if (x[0] === fromId) x[0] = intoId;
+    data.k = data.k.filter(k => k[0] !== fromId);
+    remap[fromId] = intoId;
+  }
+  function change(op) {
+    apply(op);
+    if (syncOn) { op.id = `${data.dev}:${++data.seq}`; data.o.push(op); syncSoon(); }
+  }
+
   function findOrCreate(name) {
     const nm = cleanName(name);
     const key = keyOf(nm);
     if (!key) return null;
-    let kid = data.k.find(k => k[2] === key);
     let isNew = false;
-    if (!kid) { kid = [data.n++, nm, key]; data.k.push(kid); isNew = true; saveSoon(); }
+    if (!kidByKey(key)) { change({ t: 'kid', key, name: nm }); isNew = true; saveSoon(); }
+    const kid = kidByKey(key);
     return { id: kid[0], name: kid[1], isNew };
   }
 
   /* ---------- rounds ---------- */
   function addRound(kidId, digits, nameSecs, numbers) {
-    if (!kidById(kidId) || !numbers.length) return;
+    const kid = kidById(kidId);
+    if (!kid || !numbers.length) return;
     const enc = numbers.map(n => [n.num, n.status === 'ok' ? 1 : 2, n.repeats || 0, Math.min(999, Math.round(n.secs || 0)), n.marks || 0].join(',')).join(';');
-    data.r.push([kidId, nowMin(), digits, Math.round(nameSecs || 0), enc]);
+    change({ t: 'round', key: kid[2], name: kid[1], minute: nowMin(), digits, nameSecs: Math.round(nameSecs || 0), items: enc });
     saveSoon();
   }
 
@@ -120,6 +167,7 @@
   function stats(kidId, period) {
     const kid = kidById(kidId);
     if (!kid) return null;
+    kidId = kid[0];
     const from = periodStart(period);
     const rounds = data.r.filter(r => r[0] === kidId && r[1] * 60000 >= from).map(decode);
     const sums = data.m.filter(s => s[0] === kidId && (!from || new Date(s[1] + '-28').getTime() >= from));
@@ -190,25 +238,74 @@
     const nm = cleanName(name);
     const key = keyOf(nm);
     if (!kid || !key) return { ok: false, error: 'Nome vazio.' };
-    const other = data.k.find(k => k[2] === key && k[0] !== id);
+    const other = data.k.find(k => k[2] === key && k !== kid);
     if (other) return { ok: false, error: `Já existe "${other[1]}". Use "Juntar" para unir as duas fichas.` };
-    kid[1] = nm; kid[2] = key; saveSoon();
+    change({ t: 'rename', key: kid[2], name: nm }); saveSoon();
     return { ok: true };
   }
   function merge(fromId, intoId) {
-    if (fromId === intoId || !kidById(fromId) || !kidById(intoId)) return { ok: false, error: 'Escolha outra criança.' };
-    for (const r of data.r) if (r[0] === fromId) r[0] = intoId;
-    for (const s of data.m) if (s[0] === fromId) s[0] = intoId;
-    data.k = data.k.filter(k => k[0] !== fromId);
+    const a = kidById(fromId), b = kidById(intoId);
+    if (!a || !b || a === b) return { ok: false, error: 'Escolha outra criança.' };
+    change({ t: 'merge', from: a[2], into: b[2] });
     saveSoon();
     return { ok: true };
   }
   function remove(id) {
-    data.k = data.k.filter(k => k[0] !== id);
-    data.r = data.r.filter(r => r[0] !== id);
-    data.m = data.m.filter(s => s[0] !== id);
+    const kid = kidById(id);
+    if (kid) change({ t: 'remove', key: kid[2] });
     saveNow();
     return { ok: true };
+  }
+
+  /* ---------- clinic server ---------- */
+  function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(() => sync(), 2000); }
+
+  /* First sync of a PC that already has children: send everything it has as ops. */
+  function seedOps() {
+    const ops = [];
+    const h = str => { let x = 5381; for (let i = 0; i < str.length; i++) x = (x * 33 + str.charCodeAt(i)) >>> 0; return x.toString(36); };
+    for (const k of data.k) ops.push({ id: `${data.dev}:k${h(k[2])}`, t: 'kid', key: k[2], name: k[1] });
+    const seen = {};
+    for (const r of data.r) {
+      const k = data.k.find(x => x[0] === r[0]);
+      if (!k) continue;
+      let id = `${data.dev}:r${r[1]}-${h(k[2] + r[4])}`;
+      seen[id] = (seen[id] || 0) + 1;            // two equal rounds in the same minute stay two
+      if (seen[id] > 1) id += '-' + seen[id];
+      ops.push({ id, t: 'round', key: k[2], name: k[1], minute: r[1], digits: r[2], nameSecs: r[3], items: r[4] });
+    }
+    return ops;
+  }
+
+  function sync() {
+    const b = window.syncBridge;
+    if (!b || !syncOn || syncing) return syncing || Promise.resolve(lastSync);
+    syncing = (async () => {
+      await load();
+      if (!data.synced) data.o = seedOps();   // first time: everything this PC has (already includes pending changes)
+      const sending = data.o.slice(0, 500);
+      const r = await b.sync(sending).catch(e => ({ ok: false, offline: true, error: String(e) }));
+      if (r && r.ok && r.data && Array.isArray(r.data.k) && Array.isArray(r.data.r)) {
+        const sent = new Set(sending.map(o => o.id));
+        data.o = data.o.filter(o => !sent.has(o.id));
+        const oldKeys = new Map(data.k.map(k => [k[0], k[2]]));
+        data.synced = r.data.at || Date.now();
+        data.k = r.data.k; data.r = r.data.r;
+        const byKey = new Map(data.k.map(k => [k[2], k[0]]));
+        for (const [oldId, key] of oldKeys) { const nid = byKey.get(key); if (nid !== undefined && nid !== oldId) remap[oldId] = nid; }
+        for (const x of data.m) x[0] = resolve(x[0]);
+        for (const op of data.o) apply(op);   // changes made while this sync was on its way
+        lastSync = { ok: true, at: Date.now(), error: null, pending: data.o.length };
+        saveSoon();
+        if (data.o.length) syncSoon();
+      } else {
+        if (r && r.unpaired) syncOn = false;
+        lastSync = { ok: false, at: lastSync.at, error: r && (r.unpaired ? 'unpaired' : r.error || 'offline'), pending: data.o.length };
+        if (r && !r.unpaired && data.o.length) saveSoon();
+      }
+      return lastSync;
+    })().finally(() => { syncing = null; });
+    return syncing;
   }
 
   function csv() {
@@ -237,6 +334,10 @@
     load, saveNow, keyOf, cleanName,
     findOrCreate, kidById: id => { const k = kidById(id); return k ? { id: k[0], name: k[1] } : null; },
     addRound, stats, list, rename, merge, remove, csv,
+    /* after pairing this PC: send what it has and start syncing */
+    startSync: () => { syncOn = true; data.synced = 0; data.o = []; return sync(); },
+    stopSync: () => { syncOn = false; data.o = []; data.synced = 0; saveNow(); },
+    sync, syncInfo: () => Object.assign({}, lastSync, { pending: data.o.length, synced: data.synced }), resolve,
     hasPin, setPin, checkPin, clearPin,
     _data: () => data
   };

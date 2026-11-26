@@ -1,0 +1,8 @@
+{
+  "name": "dedos-ligeiros-servidor",
+  "private": true,
+  "description": "API dos alunos da clínica (sem dependências: usa node:sqlite do Node 22)",
+  "main": "index.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node --disable-warning=ExperimentalWarning index.js" }
+}

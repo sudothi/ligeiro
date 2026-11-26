@@ -1,6 +1,7 @@
 {
   "edition": "clinica",
   "feed": "https://SEU-ENDERECO/atualizacoes/",
+  "api": "https://SEU-ENDERECO/api/",
   "publicKey": null,
   "vps": {
     "destino": "ubuntu@SEU-SERVIDOR:/var/www/atualizacoes/",

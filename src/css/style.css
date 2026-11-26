@@ -307,3 +307,12 @@ body.phone-on #controls { display: none; }
 .update-box p { margin: 0; font-size: 20px; }
 .upd-bar { width: 100%; height: 22px; border-radius: 11px; background: rgba(0,0,0,.1); overflow: hidden; }
 #updFill { height: 100%; width: 0; background: var(--green); border-radius: 11px; transition: width .2s; }
+
+/* ---------- clinic server box (Alunos, PC clinic edition) ---------- */
+.clinic-box { background: var(--card); border-radius: 18px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 0 var(--white-edge); }
+.clinic-box b { font-family: var(--display); font-size: 20px; }
+.clinic-box p { margin: 0; font-size: 15px; }
+.clinic-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.clinic-row input { font: inherit; font-size: 16px; padding: 9px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.15); min-width: 0; flex: 1 1 180px; }
+.clinic-msg { color: var(--coral-edge, #c0392b); font-weight: 700; }
+.clinic-row .btn { font-size: 16px; padding: 8px 16px; border-radius: 12px; }

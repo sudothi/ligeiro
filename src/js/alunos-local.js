@@ -107,6 +107,7 @@
     window.Game.show('alunos');
     if (!ui) ui = window.AlunosUI.mount($('alunosPanel'), localApi);
     else ui.refresh();
+    if (window.ClinicUI) window.ClinicUI.open(() => ui && ui.refresh());
   }
   $('btnAlunos').onclick = () => { if (window.Audio2) Audio2.sfx.click(); openPin(); };
   $('btnPinOk').onclick = submitPin;

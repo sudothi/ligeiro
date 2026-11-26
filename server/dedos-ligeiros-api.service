@@ -1,0 +1,20 @@
+# systemd unit for the students API. Install: see server/LEIA-ME.md
+[Unit]
+Description=Dedos Ligeiros - API dos alunos
+After=network.target
+
+[Service]
+User=dedos
+WorkingDirectory=/opt/dedos-ligeiros/server
+Environment=DL_DB=/var/lib/dedos-ligeiros/alunos.sqlite
+Environment=DL_PORT=8790
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning index.js
+Restart=always
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dedos-ligeiros
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

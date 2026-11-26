@@ -30,3 +30,10 @@ contextBridge.exposeInMainWorld('updateBridge', {
     return ipcRenderer.invoke('update:install').finally(() => ipcRenderer.removeListener('update:progress', h));
   }
 });
+
+contextBridge.exposeInMainWorld('syncBridge', {
+  status: () => ipcRenderer.invoke('sync:status'),
+  pair: (code, name) => ipcRenderer.invoke('sync:pair', code, name),
+  unpair: () => ipcRenderer.invoke('sync:unpair'),
+  sync: ops => ipcRenderer.invoke('sync:run', ops)
+});

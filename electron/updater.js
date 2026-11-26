@@ -102,4 +102,4 @@ function createUpdater() {
   return { check, install, edition };
 }
 
-module.exports = { createUpdater, newer, verifySig };
+module.exports = { createUpdater, newer, verifySig, readEdition };

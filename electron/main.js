@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { createServer } = require('./server');
 const { createUpdater } = require('./updater');
+const { createSync } = require('./sync');
 
 let win = null;
 const send = (ch, ...args) => { if (win && !win.isDestroyed()) win.webContents.send(ch, ...args); };
@@ -28,6 +29,13 @@ ipcMain.handle('update:install', async () => {
   try { return await updater.install(p => send('update:progress', p)); }
   catch (e) { return { ok: false, error: e.message }; }
 });
+
+/* Clinic server: students' data shared by all clinic PCs (clinic edition only). */
+const clinic = createSync();
+ipcMain.handle('sync:status', () => clinic.status());
+ipcMain.handle('sync:pair', (_e, code, name) => clinic.pair(String(code || '').slice(0, 20), String(name || '').slice(0, 40)));
+ipcMain.handle('sync:unpair', () => clinic.unpair());
+ipcMain.handle('sync:run', (_e, ops) => clinic.sync(ops));
 
 /* Children's data: one small JSON file in the app's data folder (never leaves this PC). */
 const dataFile = () => path.join(app.getPath('userData'), 'alunos.json');
