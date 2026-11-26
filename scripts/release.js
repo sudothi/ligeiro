@@ -110,6 +110,7 @@ function gerar(edition, flags) {
   fs.writeFileSync(edJson, JSON.stringify(Object.assign({ edition: cfg.edition || edition, feed: cfg.feed, publicKey }, cfg.api ? { api: cfg.api } : {}), null, 2) + '\n');
   try {
     if (doWin) {
+      run('node', ['scripts/camera-vendor.js']);
       run('npx', ['electron-builder', '--win', '--x64', '--publish', 'never', '-c.directories.output=dist/build-win']);
       const exe = path.join(ROOT, 'dist', 'build-win', `Dedos-Ligeiros-Instalador-${version}.exe`);
       fs.copyFileSync(exe, path.join(out, path.basename(exe)));

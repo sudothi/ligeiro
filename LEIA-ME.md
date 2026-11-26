@@ -41,6 +41,15 @@ Um app só, que ao abrir pergunta **Sou o jogador** ou **Sou o professor**.
 - **Alunos e relatórios**: no celular (aba Alunos) ou na tela inicial do jogo (com PIN de 4 números). Gráficos de dificuldade por quantidade de algarismos, algarismos difíceis (0 a 9), posição do erro, números mais difíceis, tempo por número e evolução. Corrigir nome, juntar fichas, apagar ficha, exportar PDF e planilha (CSV).
 - Código: `src/js/students.js` (dados e estatísticas), `src/js/report.js` (gráficos), `src/js/alunos-ui.js` (tela Alunos), `src/js/alunos-local.js` (PIN, exportar, pedidos do celular).
 
+## Câmera: teste dos dedos (só no PC, em teste)
+- Na tela inicial do app no PC: **Testar a câmera (dedos)**. A webcam USB fica virada para baixo, olhando a mesa. A criança deixa as duas mãos abertas na mesa, com a palma para baixo, e dobra um dedo de cada vez.
+- Numeração: mão esquerda da criança, do mindinho ao polegar, 1 a 5; mão direita, do polegar ao mindinho, 6 a 10 (o 10 é o 0 do jogo e dos anéis de papel). A mão esquerda e a direita são reconhecidas pelo formato da mão, então a câmera pode estar de qualquer lado da mesa.
+- **Calibrar**: 3 segundos com as mãos abertas e paradas. **Teste guiado**: pede 20 dedos (cada um 2 vezes) e mostra os acertos por dedo; dá para salvar a planilha.
+- **Ajustes da câmera**: escolher a webcam, girar ou espelhar a imagem, sensibilidade e tempo que o dedo precisa ficar dobrado.
+- Tudo roda no computador (MediaPipe, sem internet). Nenhuma imagem é gravada ou enviada.
+- Os arquivos do MediaPipe não ficam no repositório: `npm start` e `npm run dist` rodam `scripts/camera-vendor.js`, que copia a biblioteca de `node_modules` e baixa o modelo das mãos uma vez (~8 MB) para `src/vendor/mediapipe/`.
+- Código: `src/camera.html`, `src/js/camera/fingers.js` (numeração e detecção do dedo dobrado), `src/js/camera/camera.js` (câmera, desenho, teste guiado).
+
 ## Rodar no computador
 1. Instale o Node.js (versão 20 ou mais nova).
 2. Nesta pasta: `npm install` e depois `npm start`.

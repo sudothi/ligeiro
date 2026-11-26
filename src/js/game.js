@@ -363,6 +363,8 @@
   $('btnNewKid').onclick = () => { Audio2.sfx.click(); showName(); };
   $('btnRings').onclick = () => show('rings');
   $('btnRingsBack').onclick = () => show('home');
+  // webcam test screen: PC app only (window.remoteBridge comes from electron/preload.js)
+  if (window.remoteBridge && $('btnCamera')) { $('btnCamera').hidden = false; $('btnCamera').onclick = () => { location.href = 'camera.html'; }; }
   $('btnPrint').onclick = () => window.print();
 
   /* ---------- home settings ---------- */
