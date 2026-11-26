@@ -2,7 +2,7 @@
    (game-cam.js): opens the webcam, runs MediaPipe, works out the bent finger and draws
    the hands with the number of each finger. Nothing is recorded or sent anywhere. */
 import {
-  BONES, FINGERS, fingerNumber, digitOf, toView, assignSides, BendMeter, FingerPicker
+  BONES, FINGERS, GESTURES, fingerNumber, digitOf, toView, assignSides, BendMeter, FingerPicker
 } from './fingers.js';
 
 // same colours as the game and the paper rings (style.css --d0 … --d9)
@@ -24,15 +24,17 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 
 export function createTracker(canvas) {
   const ctx = canvas.getContext('2d');
-  const opts = Object.assign({ deviceId: '', mirror: false, rotate: false, threshold: 0.5, holdMs: 300 }, load(KEY, {}));
-  const meter = new BendMeter();
+  const opts = Object.assign({ deviceId: '', mirror: false, rotate: false, threshold: 0.5, holdMs: 300, gesture: 'levantar' }, load(KEY, {}));
+  const meter = new BendMeter(opts.gesture);
   const picker = new FingerPicker({ threshold: opts.threshold, holdMs: opts.holdMs });
   const video = document.createElement('video');
   video.muted = true; video.playsInline = true;
 
   // calibration from an earlier session (test screen or game)
   const savedRest = load(REST_KEY, null);
-  if (savedRest && savedRest.mirror === !!opts.mirror && savedRest.rest) { meter.rest = Object.assign({}, savedRest.rest); meter.done = true; }
+  if (savedRest && savedRest.mirror === !!opts.mirror && savedRest.gesture === meter.gesture && savedRest.rest) {
+    meter.rest = Object.assign({}, savedRest.rest); meter.restZ = Object.assign({}, savedRest.restZ || {}); meter.done = true;
+  }
 
   let stream = null, landmarker = null, lastVideoTime = -1, raf = 0;
   let calibUntil = 0, calibDone = null;
@@ -80,6 +82,8 @@ export function createTracker(canvas) {
     },
     calibSecondsLeft(now = performance.now()) { return calibUntil ? Math.max(0, Math.ceil((calibUntil - now) / 1000)) : 0; },
     resetCalibration() { meter.reset(); try { localStorage.removeItem(REST_KEY); } catch (e) {} },
+    setGesture(g) { if (g === meter.gesture) return; opts.gesture = g; t.saveOpts(); meter.setGesture(g); t.resetCalibration(); },
+    get gesture() { return GESTURES[meter.gesture]; },
     start() { if (!raf) raf = requestAnimationFrame(loop); },
     stop() {
       if (raf) cancelAnimationFrame(raf); raf = 0;
@@ -107,7 +111,7 @@ export function createTracker(canvas) {
     if (calibUntil && now >= calibUntil) {
       const count = meter.finishCalibration();
       calibUntil = 0;
-      if (count) save(REST_KEY, { mirror: !!opts.mirror, rest: meter.rest });
+      if (count) save(REST_KEY, { mirror: !!opts.mirror, gesture: meter.gesture, rest: meter.rest, restZ: meter.restZ });
       const cb = calibDone; calibDone = null;
       if (cb) cb(count);
     }

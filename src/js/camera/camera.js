@@ -2,7 +2,7 @@
    finger the child bent. Everything runs on this computer: no image is saved or sent.
    Camera, MediaPipe and drawing are in tracker.js (shared with the game); the finger
    maths in fingers.js. This file is the test screen itself. */
-import { fingerLabel, fingersPointDown } from './fingers.js';
+import { fingerLabel, fingersPointDown, GESTURES } from './fingers.js';
 import { createTracker, colorOf, CAM_ERRORS } from './tracker.js';
 
 const $ = id => document.getElementById(id);
@@ -26,6 +26,14 @@ function setStatus(text, warn) {
 }
 
 /* ---------- options panel ---------- */
+const G = () => tracker.gesture;
+function paintGesture() {
+  $('selGesture').value = tracker.meter.gesture;
+  $('pickedLbl').textContent = 'Dedo ' + G().past;
+  $('barsLbl').textContent = 'Quanto cada dedo se mexeu';
+}
+$('selGesture').onchange = e => { tracker.setGesture(e.target.value); paintGesture(); statusHoldUntil = 0; };
+paintGesture();
 $('optMirror').checked = opts.mirror;
 $('optRotate').checked = opts.rotate;
 $('optSens').value = String(1.05 - opts.threshold);
@@ -103,7 +111,7 @@ function calibrate() {
   $('btnCalib').disabled = true;
   tracker.calibrate(count => {
     $('btnCalib').disabled = false;
-    setStatus(count >= 10 ? 'Calibrado! Agora dobre um dedo de cada vez.' : `Calibrei só ${count} dedos. Deixe as duas mãos inteiras na imagem e calibre de novo.`, count < 10);
+    setStatus(count >= 10 ? `Calibrado! Agora ${G().verb.toLowerCase()} um dedo de cada vez.` : `Calibrei só ${count} dedos. Deixe as duas mãos inteiras na imagem e calibre de novo.`, count < 10);
     statusHoldUntil = performance.now() + 2500;
     if (testAfterCalib) { testAfterCalib = false; if (count >= 10) startTest(); }
   });
@@ -132,7 +140,7 @@ function ask() {
   const n = test.list[test.i];
   const b = $('banner');
   b.className = 'cam-banner'; b.hidden = false;
-  b.innerHTML = `<span class="n" style="--dc:${colorOf(n)}">${n}</span><span>Dobre o dedo ${n}<small>${fingerLabel(n)} · ${test.i + 1} de ${test.list.length}</small></span>` +
+  b.innerHTML = `<span class="n" style="--dc:${colorOf(n)}">${n}</span><span>${G().verb} o dedo ${n}<small>${fingerLabel(n)} · ${test.i + 1} de ${test.list.length}</small></span>` +
     `<button class="btn" id="btnTestSkip">Pular</button><button class="btn coral" id="btnTestStop">Parar</button>`;
   $('btnTestSkip').onclick = () => answer(null, 'pulou');
   $('btnTestStop').onclick = () => { test.on = false; $('banner').hidden = true; if (test.log.length) showResults(); };
@@ -178,7 +186,7 @@ function showResults() {
   const el = $('results');
   el.hidden = false;
   el.innerHTML = `<h2>Resultado: ${hit} de ${test.log.length} (${pct}%)</h2>
-    <p>Sensibilidade ${$('outSens').textContent}, tempo dobrado ${$('outHold').textContent}.</p>
+    <p>Gesto: ${G().verb.toLowerCase()} o dedo. Sensibilidade ${$('outSens').textContent}, tempo segurando ${$('outHold').textContent}.</p>
     <table><thead><tr><th>Dedo</th><th></th><th>Acertos</th><th>Confundiu com</th><th>Não viu / pulou</th><th>Tempo médio</th></tr></thead><tbody>${rows.join('')}</tbody></table>
     <div class="row-actions"><button class="btn green" id="btnAgain">Fazer de novo</button>${window.pdfBridge ? '<button class="btn" id="btnCsv">Salvar planilha</button>' : ''}<button class="btn" id="btnClose">Fechar</button></div>`;
   $('btnAgain').onclick = startTest;
@@ -198,7 +206,7 @@ tracker.onFrame = ({ sides, hands, scores, picked, now }) => {
   if (picked != null) { showPicked(picked); if (!test.on) beep(); }
   else if (picker.active == null && $('picked').textContent !== '–' && !test.on) showPicked(null);
 
-  if (tracker.calibrating) setStatus(`Calibrando… deixe as mãos abertas e paradas (${tracker.calibSecondsLeft(now)})`);
+  if (tracker.calibrating) setStatus(`Calibrando… deixe as mãos ${G().rest} e paradas (${tracker.calibSecondsLeft(now)})`);
   else if (now > statusHoldUntil) setStatus(...statusFor(sides, hands));
 
   /* guided test */
@@ -215,12 +223,12 @@ tracker.onFrame = ({ sides, hands, scores, picked, now }) => {
 let statusHoldUntil = 0;
 
 function statusFor(sides, hands) {
-  if (!sides.length) return ['Não estou vendo as mãos. Coloque as duas mãos abertas na mesa, com a palma para baixo.', true];
+  if (!sides.length) return [`Não estou vendo as mãos. Coloque as duas mãos ${G().rest}, com a palma para baixo.`, true];
   if (fingersPointDown(hands)) return ['Os dedos estão apontando para baixo na tela. Marque "Girar a imagem" nos ajustes.', true];
   if (sides.length === 1) return [`Estou vendo só a mão ${sides[0].side === 'L' ? 'esquerda' : 'direita'}.`, true];
   if (sides[0].how === 'posição') return ['As duas mãos parecem iguais. Confira se as palmas estão para baixo.', true];
-  if (!meter.calibrated) return ['Vendo as duas mãos. Com elas abertas e paradas, clique em Calibrar.'];
-  return ['Pronto! Dobre um dedo de cada vez.'];
+  if (!meter.calibrated) return [`Vendo as duas mãos. Com elas ${G().rest} e paradas, clique em Calibrar.`];
+  return [`Pronto! ${G().verb} um dedo de cada vez.`];
 }
 
 /* ---------- start ---------- */

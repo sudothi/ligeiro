@@ -104,13 +104,13 @@ import { digitOf, fingersPointDown } from './fingers.js';
   Game.onChange(sync);
 
   tracker.onFrame = ({ sides, hands, picked, now }) => {
-    if (tracker.calibrating) setStatus(`Calibrando… mãos abertas e paradas (${tracker.calibSecondsLeft(now)})`);
+    if (tracker.calibrating) setStatus(`Calibrando… mãos ${tracker.gesture.rest} e paradas (${tracker.calibSecondsLeft(now)})`);
     else if (now > calibMsgUntil) {
       if (!sides.length) setStatus('Não vejo as mãos', true);
       else if (fingersPointDown(hands)) setStatus('Imagem de ponta-cabeça (ajuste na tela de teste)', true);
       else if (sides.length === 1) setStatus(`Só a mão ${sides[0].side === 'L' ? 'esquerda' : 'direita'}`, true);
-      else if (!tracker.meter.calibrated) setStatus('Mãos abertas e clique em Calibrar', true);
-      else setStatus('Pronto');
+      else if (!tracker.meter.calibrated) setStatus(`Mãos ${tracker.gesture.rest} e clique em Calibrar`, true);
+      else setStatus(`Pronto: ${tracker.gesture.verb.toLowerCase()} o dedo`);
     }
     if (picked != null) onPick(picked);
   };
