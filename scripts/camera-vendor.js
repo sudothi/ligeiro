@@ -38,7 +38,7 @@ function download(url, file, redirects = 5) {
 
 (async () => {
   if (!fs.existsSync(lib)) {
-    console.warn('[câmera] @mediapipe/tasks-vision não está instalado (rode npm install). A tela de teste da câmera não vai funcionar.');
+    console.warn('\n[câmera] Falta instalar o reconhecimento das mãos. Feche o jogo e rode: npm install  (depois npm start de novo)\n');
     return;
   }
   fs.mkdirSync(out, { recursive: true });

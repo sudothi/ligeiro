@@ -1,7 +1,7 @@
 /* Webcam test screen: shows the hands, the number of each finger (1 to 10) and which
    finger the child bent. Everything runs on this computer: no image is saved or sent.
    The finger maths lives in fingers.js; this file is camera, drawing and screens. */
-import { FilesetResolver, HandLandmarker } from '../../vendor/mediapipe/vision_bundle.mjs';
+// MediaPipe is loaded later (see loadModel), so the camera still opens when its files are missing
 import {
   BONES, FINGERS, fingerNumber, fingerLabel, digitOf, toView, assignSides, fingersPointDown,
   BendMeter, FingerPicker
@@ -119,6 +119,7 @@ $('selCam').onchange = async e => {
 /* ---------- MediaPipe ---------- */
 async function loadModel() {
   const base = new URL('vendor/mediapipe/', location.href).href.replace(/\/$/, '');
+  const { FilesetResolver, HandLandmarker } = await import('../../vendor/mediapipe/vision_bundle.mjs');
   const fileset = await FilesetResolver.forVisionTasks(base);
   const make = delegate => HandLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: base + '/hand_landmarker.task', delegate },
@@ -350,8 +351,9 @@ function statusFor(sides, hands) {
   try {
     landmarker = await loadModel();
   } catch (e) {
-    $('loading').textContent = 'Não encontrei os arquivos do reconhecimento das mãos. No PC de desenvolvimento, rode npm start de novo com internet uma vez.';
-    setStatus('Erro ao carregar o MediaPipe: ' + (e.message || e), true);
+    $('loading').textContent = 'A câmera abriu, mas faltam os arquivos do reconhecimento das mãos. Na pasta do jogo, rode npm install e depois npm start, com internet (só da primeira vez).';
+    console.error(e);
+    setStatus('Faltam os arquivos do reconhecimento das mãos. Rode npm install e depois npm start.', true);
     return;
   }
   $('loading').hidden = true;
