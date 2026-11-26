@@ -16,7 +16,7 @@ const TIMEOUT = 6000;
 
 function readEdition() {
   const file = process.env.DL_EDITION || path.join(__dirname, '..', 'src', 'edition.json');
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return null; }
+  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')); } catch (e) { return null; }
 }
 
 function newer(a, b) {
