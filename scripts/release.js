@@ -94,7 +94,7 @@ function gerar(edition, flags) {
   if (edition === 'clinica' && !cfg.publicKey) die('falta a chave pública em config/clinica.json. Rode: npm run release:chave');
   const doWin = !flags.includes('--sem-windows');
   const doAndroid = !flags.includes('--sem-android');
-  if (doWin && !win) die('o instalador do Windows precisa ser gerado no Windows (ou use --sem-windows)');
+  if (doWin && !win && !process.env.DL_WIN_ON_LINUX) die('o instalador do Windows precisa do Windows, ou de wine com DL_WIN_ON_LINUX=1 (ou use --sem-windows)');
   if (doAndroid && edition === 'clinica' && !fs.existsSync(path.join(CFG, 'android.properties')))
     die('falta config/android.properties (chave do Android). Rode: npm run release:chave com o Java instalado');
 
