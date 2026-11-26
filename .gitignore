@@ -8,3 +8,5 @@ config/*.jks
 config/android.properties
 src/edition.json
 server/dados/
+# arquivos do MediaPipe (copiados/baixados por scripts/camera-vendor.js)
+src/vendor/

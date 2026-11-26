@@ -6,6 +6,8 @@ const root = path.join(__dirname, '..');
 const www = path.join(root, 'www');
 fs.rmSync(www, { recursive: true, force: true });
 fs.cpSync(path.join(root, 'src'), www, { recursive: true });
+// the webcam test is PC only: keep it (and the ~20 MB of MediaPipe) out of the Android app
+for (const p of ['camera.html', 'css/camera.css', 'js/camera', 'vendor']) fs.rmSync(path.join(www, p), { recursive: true, force: true });
 fs.cpSync(path.join(root, 'remote'), path.join(www, 'remote'), { recursive: true });
 fs.cpSync(path.join(root, 'app'), www, { recursive: true });
 fs.mkdirSync(path.join(www, 'js', 'vendor'), { recursive: true });

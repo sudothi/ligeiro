@@ -5,7 +5,9 @@
   "main": "electron/main.js",
   "private": true,
   "scripts": {
+    "prestart": "node scripts/camera-vendor.js",
     "start": "electron .",
+    "predist": "node scripts/camera-vendor.js",
     "dist": "electron-builder --win --x64",
     "www": "node scripts/build-www.js",
     "android:sync": "node scripts/build-www.js && npx cap sync android",
@@ -17,6 +19,7 @@
     "@capacitor/android": "6.2.3",
     "@capacitor/cli": "6.2.3",
     "@capacitor/core": "6.2.3",
+    "@mediapipe/tasks-vision": "1.2.3",
     "electron": "33.2.1",
     "electron-builder": "25.1.8",
     "jsqr": "1.4.0",
