@@ -15,7 +15,7 @@ fs.copyFileSync(path.join(root, 'node_modules/@capacitor/core/dist/capacitor.js'
 fs.copyFileSync(path.join(root, 'node_modules/qrcode-generator/dist/qrcode.js'), path.join(www, 'js/vendor/qrcode.js'));
 fs.copyFileSync(path.join(root, 'node_modules/jsqr/dist/jsQR.js'), path.join(www, 'js/vendor/jsQR.js'));
 const idx = path.join(www, 'index.html');
-const html = fs.readFileSync(idx, 'utf8');
+const html = fs.readFileSync(idx, 'utf8').replace('<script type="module" src="js/camera/game-cam.js"></script>\n', '');
 const tag = '<script src="js/remote.js"></script>';
 if (!html.includes(tag)) throw new Error('remote.js tag not found in index.html');
 fs.writeFileSync(idx, html.replace(tag,

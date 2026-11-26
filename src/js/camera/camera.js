@@ -1,31 +1,14 @@
 /* Webcam test screen: shows the hands, the number of each finger (1 to 10) and which
    finger the child bent. Everything runs on this computer: no image is saved or sent.
-   The finger maths lives in fingers.js; this file is camera, drawing and screens. */
-// MediaPipe is loaded later (see loadModel), so the camera still opens when its files are missing
-import {
-  BONES, FINGERS, fingerNumber, fingerLabel, digitOf, toView, assignSides, fingersPointDown,
-  BendMeter, FingerPicker
-} from './fingers.js';
+   Camera, MediaPipe and drawing are in tracker.js (shared with the game); the finger
+   maths in fingers.js. This file is the test screen itself. */
+import { fingerLabel, fingersPointDown } from './fingers.js';
+import { createTracker, colorOf, CAM_ERRORS } from './tracker.js';
 
 const $ = id => document.getElementById(id);
-// same colours as the game and the paper rings (style.css --d0 … --d9)
-const COLORS = ['#6c5ce7', '#e84393', '#ff7f11', '#e6a800', '#22b268', '#00a3d4', '#3867d6', '#b04ad6', '#e5502f', '#0f9b8e'];
-const colorOf = n => COLORS[digitOf(n)];
-
-/* ---------- settings (remembered on this PC) ---------- */
-const KEY = 'dl.camera';
-const opts = Object.assign({ deviceId: '', mirror: false, rotate: false, threshold: 0.5, holdMs: 300 },
-  (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
-const saveOpts = () => { try { localStorage.setItem(KEY, JSON.stringify(opts)); } catch (e) {} };
-
-const meter = new BendMeter();
-const picker = new FingerPicker({ threshold: opts.threshold, holdMs: opts.holdMs });
-
-/* ---------- page parts ---------- */
-const canvas = $('view');
-const ctx = canvas.getContext('2d');
-const video = document.createElement('video');
-video.muted = true; video.playsInline = true;
+const tracker = createTracker($('view'));
+const { opts, meter, picker } = tracker;
+const saveOpts = tracker.saveOpts;
 
 (function buildBars() {
   let html = '';
@@ -52,7 +35,7 @@ function paintOpts() {
   $('outHold').textContent = (picker.holdMs / 1000).toFixed(2).replace('.', ',') + ' s';
   paintThreshold();
 }
-$('optMirror').onchange = e => { opts.mirror = e.target.checked; saveOpts(); meter.reset(); };
+$('optMirror').onchange = e => { opts.mirror = e.target.checked; saveOpts(); tracker.resetCalibration(); };
 $('optRotate').onchange = e => { opts.rotate = e.target.checked; saveOpts(); };
 $('optSens').oninput = e => { picker.threshold = opts.threshold = +(1.05 - +e.target.value).toFixed(2); saveOpts(); paintOpts(); };
 $('optHold').oninput = e => { picker.holdMs = opts.holdMs = +e.target.value; saveOpts(); paintOpts(); };
@@ -72,36 +55,17 @@ function beep(freq = 660, ms = 120) {
 }
 
 /* ---------- camera ---------- */
-let stream = null;
 async function openCamera() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  const video0 = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: opts.deviceId ? Object.assign({ deviceId: { exact: opts.deviceId } }, video0) : video0, audio: false });
-  } catch (e) {
-    if (!opts.deviceId) throw e;
-    opts.deviceId = ''; saveOpts();
-    stream = await navigator.mediaDevices.getUserMedia({ video: video0, audio: false });
-  }
-  video.srcObject = stream;
-  await video.play();
-  const cur = stream.getVideoTracks()[0];
-  await listCameras(cur.getSettings().deviceId);
-  meter.reset();
+  const curId = await tracker.openCamera();
+  await listCameras(curId);
 }
 async function listCameras(curId) {
-  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const devs = await tracker.listCameras();
   $('selCam').innerHTML = devs.length
     ? devs.map((d, i) => `<option value="${d.deviceId}"${d.deviceId === curId ? ' selected' : ''}>${(d.label || 'Câmera ' + (i + 1)).replace(/[<>&"]/g, '')}</option>`).join('')
     : '<option value="">Nenhuma câmera encontrada</option>';
   return devs.length;
 }
-const CAM_ERRORS = {
-  NotAllowedError: 'O Windows bloqueou a câmera. Abra Configurações > Privacidade e segurança > Câmera e ligue "Acesso à câmera", "Permitir que aplicativos acessem a câmera" e "Permitir que aplicativos da área de trabalho acessem a câmera".',
-  NotReadableError: 'A câmera está ocupada ou travada. Feche programas que usam a câmera (Teams, Zoom, WhatsApp, navegador, app Câmera) e clique em Tentar de novo.',
-  NotFoundError: 'Nenhuma câmera foi encontrada. Confira o cabo USB e se a câmera aparece no Gerenciador de Dispositivos do Windows. Em alguns notebooks a câmera tem uma tecla (F8/F10) ou uma tampinha que desliga.',
-  OverconstrainedError: 'A câmera escolhida não aceitou o formato pedido. Escolha outra câmera nos ajustes ou clique em Tentar de novo.'
-};
 function showCameraError(e) {
   const name = (e && e.name) || 'Erro';
   const tip = CAM_ERRORS[name] || 'Confira se a webcam está ligada e se outro programa não está usando.';
@@ -113,65 +77,10 @@ function showCameraError(e) {
 }
 $('selCam').onchange = async e => {
   opts.deviceId = e.target.value; saveOpts();
-  try { await openCamera(); $('loading').hidden = !!landmarker; } catch (err) { showCameraError(err); }
+  try { await openCamera(); $('loading').hidden = tracker.ready; } catch (err) { showCameraError(err); }
 };
 
-/* ---------- MediaPipe ---------- */
-async function loadModel() {
-  const base = new URL('vendor/mediapipe/', location.href).href.replace(/\/$/, '');
-  const { FilesetResolver, HandLandmarker } = await import('../../vendor/mediapipe/vision_bundle.mjs');
-  const fileset = await FilesetResolver.forVisionTasks(base);
-  const make = delegate => HandLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: base + '/hand_landmarker.task', delegate },
-    runningMode: 'VIDEO', numHands: 2,
-    minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5
-  });
-  try { return await make('GPU'); } catch (e) { console.warn('GPU indisponível, usando CPU', e); return make('CPU'); }
-}
-
-/* ---------- drawing ---------- */
-function drawVideo(w, h) {
-  ctx.save();
-  if (opts.rotate) { ctx.translate(w, h); ctx.scale(-1, -1); }
-  if (opts.mirror) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(video, 0, 0, w, h);
-  ctx.restore();
-}
-
-function drawHand({ pts, side }, scores, target) {
-  const palm = (Math.hypot(pts[0].x - pts[9].x, pts[0].y - pts[9].y) + Math.hypot(pts[5].x - pts[17].x, pts[5].y - pts[17].y)) / 2;
-  ctx.lineWidth = Math.max(2, palm * 0.04);
-  ctx.strokeStyle = 'rgba(255,255,255,.75)';
-  ctx.beginPath();
-  for (const [a, b] of BONES) { ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); }
-  ctx.stroke();
-  ctx.fillStyle = '#fff';
-  for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2, palm * 0.03), 0, 7); ctx.fill(); }
-
-  const r = Math.max(12, palm * 0.17);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `600 ${Math.round(r * 1.15)}px Fredoka, sans-serif`;
-  for (let f = 0; f < 5; f++) {
-    const n = fingerNumber(side, f);
-    const tip = pts[FINGERS[f].joints[3]];
-    const s = scores[n] || 0;
-    const on = picker.active === n;
-    const rr = on ? r * 1.35 : r;
-    if (target === n) {
-      ctx.strokeStyle = '#ffc93c'; ctx.lineWidth = r * 0.35;
-      ctx.beginPath(); ctx.arc(tip.x, tip.y, rr + r * 0.45, 0, 7); ctx.stroke();
-    }
-    ctx.globalAlpha = 0.55 + 0.45 * Math.min(1, s / picker.threshold);
-    ctx.fillStyle = colorOf(n);
-    ctx.beginPath(); ctx.arc(tip.x, tip.y, rr, 0, 7); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = on ? r * 0.25 : r * 0.12; ctx.strokeStyle = '#fff';
-    ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.fillText(String(n), tip.x, tip.y + r * 0.05);
-  }
-}
-
+/* ---------- drawing extras ---------- */
 function paintBars(scores) {
   for (let n = 1; n <= 10; n++) {
     const s = scores[n];
@@ -185,16 +94,21 @@ function showPicked(n) {
   const el = $('picked');
   el.textContent = n == null ? '–' : String(n);
   el.parentElement.style.setProperty('--dc', n == null ? 'var(--ink)' : colorOf(n));
-  $('pickedName').textContent = n == null ? ' ' : fingerLabel(n) + (n === 10 ? ' (0 no jogo)' : '');
+  $('pickedName').textContent = n == null ? '\u00a0' : fingerLabel(n) + (n === 10 ? ' (0 no jogo)' : '');
 }
 
 /* ---------- calibration ---------- */
-let calibUntil = 0;
-$('btnCalib').onclick = () => {
-  meter.startCalibration();
-  calibUntil = performance.now() + 2500;
+let testAfterCalib = false;
+function calibrate() {
   $('btnCalib').disabled = true;
-};
+  tracker.calibrate(count => {
+    $('btnCalib').disabled = false;
+    setStatus(count >= 10 ? 'Calibrado! Agora dobre um dedo de cada vez.' : `Calibrei só ${count} dedos. Deixe as duas mãos inteiras na imagem e calibre de novo.`, count < 10);
+    statusHoldUntil = performance.now() + 2500;
+    if (testAfterCalib) { testAfterCalib = false; if (count >= 10) startTest(); }
+  });
+}
+$('btnCalib').onclick = calibrate;
 
 /* ---------- guided test ---------- */
 const test = { on: false, list: [], i: 0, log: [], askedAt: 0, waitOpen: false, feedbackUntil: 0 };
@@ -241,11 +155,10 @@ function nextOrFinish() {
   if (test.i >= test.list.length) { test.on = false; $('banner').hidden = true; showResults(); }
   else ask();
 }
-let testAfterCalib = false;
 $('btnTest').onclick = () => {
   if (meter.calibrated) return startTest();
   testAfterCalib = true; // calibrate first, then start
-  $('btnCalib').onclick();
+  calibrate();
 };
 
 function showResults() {
@@ -276,45 +189,17 @@ function showResults() {
   };
 }
 
-/* ---------- main loop ---------- */
-let landmarker = null, lastVideoTime = -1, frames = 0, fpsAt = performance.now();
-function loop() {
-  requestAnimationFrame(loop);
-  if (!landmarker || video.readyState < 2) return;
-  const now = performance.now();
-  if (video.currentTime === lastVideoTime) return;
-  lastVideoTime = video.currentTime;
-
-  const w = video.videoWidth, h = video.videoHeight;
-  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-  const res = landmarker.detectForVideo(video, now);
-  const hands = (res.landmarks || []).map(lm => toView(lm, w, h, opts));
-  const sides = assignSides(hands);
-  const scores = meter.update(sides);
-  const picked = picker.update(scores, now);
-
-  drawVideo(w, h);
-  const target = test.on && test.feedbackUntil === 0 ? test.list[test.i] : null;
-  for (const s of sides) drawHand(s, scores, target);
+/* ---------- per frame ---------- */
+let frames = 0, fpsAt = performance.now();
+tracker.onFrame = ({ sides, hands, scores, picked, now }) => {
+  tracker.target = test.on && test.feedbackUntil === 0 ? test.list[test.i] : null;
   paintBars(scores);
 
   if (picked != null) { showPicked(picked); if (!test.on) beep(); }
   else if (picker.active == null && $('picked').textContent !== '–' && !test.on) showPicked(null);
 
-  /* calibration countdown */
-  if (calibUntil) {
-    const left = Math.ceil((calibUntil - now) / 1000);
-    if (left > 0) setStatus(`Calibrando… deixe as mãos abertas e paradas (${left})`);
-    else {
-      const count = meter.finishCalibration();
-      calibUntil = 0; $('btnCalib').disabled = false;
-      setStatus(count >= 10 ? 'Calibrado! Agora dobre um dedo de cada vez.' : `Calibrei só ${count} dedos. Deixe as duas mãos inteiras na imagem e calibre de novo.`, count < 10);
-      statusHoldUntil = now + 2500;
-      if (testAfterCalib) { testAfterCalib = false; if (count >= 10) startTest(); }
-    }
-  } else if (now > statusHoldUntil) {
-    setStatus(...statusFor(sides, hands));
-  }
+  if (tracker.calibrating) setStatus(`Calibrando… deixe as mãos abertas e paradas (${tracker.calibSecondsLeft(now)})`);
+  else if (now > statusHoldUntil) setStatus(...statusFor(sides, hands));
 
   /* guided test */
   if (test.on) {
@@ -326,7 +211,7 @@ function loop() {
 
   frames++;
   if (now - fpsAt > 1000) { $('fps').textContent = `${Math.round(frames * 1000 / (now - fpsAt))} quadros/s`; frames = 0; fpsAt = now; }
-}
+};
 let statusHoldUntil = 0;
 
 function statusFor(sides, hands) {
@@ -349,7 +234,7 @@ function statusFor(sides, hands) {
   }
   $('loading').textContent = 'Carregando o reconhecimento das mãos…';
   try {
-    landmarker = await loadModel();
+    await tracker.loadModel();
   } catch (e) {
     $('loading').textContent = 'A câmera abriu, mas faltam os arquivos do reconhecimento das mãos. Na pasta do jogo, rode npm install e depois npm start, com internet (só da primeira vez).';
     console.error(e);
@@ -357,5 +242,5 @@ function statusFor(sides, hands) {
     return;
   }
   $('loading').hidden = true;
-  requestAnimationFrame(loop);
+  tracker.start();
 })();
