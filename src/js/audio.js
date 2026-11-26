@@ -1,4 +1,6 @@
-/* Sound effects (synthesised, no files) and the voice that reads the number aloud. */
+/* Sound effects (synthesised, no files) and the recorded voice clips (praise only).
+   The numbers are not spoken, and the system voice (Windows/Android TTS) is never used:
+   it sounded like a different person. */
 (function () {
   let ctx = null;
   const opts = { sound: true, voice: true };
@@ -28,32 +30,9 @@
     finish: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.15, i * 0.12))
   };
 
-  let ptVoice = null;
-  function pickVoice() {
-    try {
-      const vs = speechSynthesis.getVoices();
-      ptVoice = vs.find(v => /pt[-_]BR/i.test(v.lang)) || vs.find(v => /^pt/i.test(v.lang)) || null;
-    } catch (e) { ptVoice = null; }
-  }
-  if ('speechSynthesis' in window) {
-    pickVoice();
-    speechSynthesis.onvoiceschanged = pickVoice;
-  }
-
-  function say(text, rate = 0.85) {
-    if (!opts.voice || !('speechSynthesis' in window)) return;
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(String(text));
-      u.lang = 'pt-BR';
-      u.rate = rate;
-      u.pitch = 1.1;
-      if (ptVoice) u.voice = ptVoice;
-      speechSynthesis.speak(u);
-    } catch (e) { /* speech not available */ }
-  }
-  /* Recorded voice clips (src/audio/<key>.mp3). Played in sequence; if any clip is
-     missing or fails, the whole line falls back to the system voice. */
+  /* Recorded voice clips (src/audio/<key>.mp3), played in sequence a bit slower than
+     recorded so children can follow. A missing clip is simply skipped. */
+  const VOICE_RATE = 0.8;
   const clipCache = {};
   const clipOk = {};
   let playing = null;
@@ -72,17 +51,19 @@
     return clipCache[key];
   }
 
-  async function speak(clips, text, rate) {
+  async function speak(clips) {
     if (!opts.voice) return;
     const my = ++token;
     hush();
     const audios = await Promise.all(clips.map(loadClip));
     if (my !== token) return;
-    if (audios.some(a => !a)) { say(text, rate); return; }
     for (const a of audios) {
+      if (!a) continue;
       if (my !== token) return;
       playing = a;
       a.currentTime = 0;
+      a.preservesPitch = true;
+      a.playbackRate = VOICE_RATE;
       await new Promise(res => { a.onended = res; a.onpause = res; a.play().catch(res); });
     }
     playing = null;
@@ -91,10 +72,9 @@
   function preload(keys) { keys.forEach(loadClip); }
 
   function hush() {
-    try { speechSynthesis.cancel(); } catch (e) {}
     if (playing) { try { playing.pause(); } catch (e) {} playing = null; }
   }
   function stop() { token++; hush(); }
 
-  window.Audio2 = { sfx, say, speak, preload, hush: stop, opts };
+  window.Audio2 = { sfx, speak, preload, hush: stop, opts };
 })();

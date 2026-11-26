@@ -7,7 +7,7 @@ Jogo para atendimentos de psicopedagogia: aparece um número, a criança mexe os
 - Tela do jogo: número atual grande (cada algarismo com sua cor, igual aos anéis), anterior acima e próximo abaixo, bolinhas de progresso, mascote reagindo.
 - Controles do profissional (barra de baixo ou teclado):
   - Espaço ou Enter: **Certo** (comemora e passa para o próximo)
-  - R: **Repetir** (fala o número de novo)
+  - R: **Repetir** (mostra o número de novo e diz "Olha de novo...")
   - Seta direita: **Pular**
   - Seta esquerda: **Voltar** um número
   - P ou Esc: **Pausar**

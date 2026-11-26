@@ -1,6 +1,7 @@
-Falas gravadas do jogo (mp3). Se um arquivo faltar, o jogo usa a voz do sistema.
-0.mp3 a 9.mp3 ......... "zero" ... "nove"
+Falas gravadas do jogo (mp3, voz ElevenLabs). O jogo não fala os números nem usa a voz do sistema;
+as falas tocam a 80% da velocidade (VOICE_RATE em src/js/audio.js). Se um arquivo faltar, fica em silêncio.
 elogio-1.mp3 a 6 ...... "Isso aí!", "Muito bem!", "Arrasou!", "Que dedinhos rápidos!", "Perfeito!", "Uhuu!"
 de-novo.mp3 ........... "Olha de novo..."
 proximo.mp3 ........... "Tudo bem, vamos para o próximo!"
 parabens.mp3 .......... "Incrível! Parabéns!"
+0.mp3 a 9.mp3 não são mais usados.

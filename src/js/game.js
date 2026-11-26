@@ -21,7 +21,6 @@
   Audio2.opts.voice = cfg.voice;
   Audio2.opts.sound = cfg.sound;
 
-  const WORDS = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
   const PRAISE = ['Isso aí!', 'Muito bem!', 'Arrasou!', 'Que dedinhos rápidos!', 'Perfeito!', 'Uhuu!'];
   const PROMPT = ['Mostre com os dedos!', 'Qual dedinho primeiro?', 'Você consegue!', 'Vamos lá!'];
   const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -48,10 +47,6 @@
       for (let i = 0; i < n; i++) s += String(i === 0 && n > 1 ? 1 + Math.floor(Math.random() * 9) : Math.floor(Math.random() * 10));
     } while (s === avoid);
     return s;
-  }
-  function speakNumber(num) {
-    const digits = [...num].map(d => WORDS[+d]);
-    Audio2.speak([...num], num.length === 1 ? digits[0] : `${num}. ${digits.join(', ')}`);
   }
 
   /* ---------- state ---------- */
@@ -126,7 +121,7 @@
     emit();
     gameMascot.set('happy');
     say(pick(PROMPT));
-    if (anim === 'enter') { cur.shownAt = Date.now(); Audio2.sfx.appear(); setTimeout(() => speakNumber(cur.num), 250); }
+    if (anim === 'enter') { cur.shownAt = Date.now(); Audio2.sfx.appear(); }
   }
 
   function advance() {
@@ -160,7 +155,7 @@
     resultMascot.set('cheer', 4000);
     Audio2.sfx.finish();
     Confetti.burst(160, innerWidth / 2, innerHeight * 0.35);
-    Audio2.speak(['parabens'], 'Incrível! Parabéns!');
+    Audio2.speak(['parabens']);
   }
 
   function starSvg(on, i) {
@@ -186,7 +181,7 @@
       const pi = Math.floor(Math.random() * PRAISE.length);
       const p = PRAISE[pi]; say(p);
       Audio2.sfx.correct();
-      Audio2.speak([`elogio-${pi + 1}`], p, 1);
+      Audio2.speak([`elogio-${pi + 1}`]);
       const r = card.getBoundingClientRect();
       Confetti.burst(70, r.left + r.width / 2, r.top + r.height / 2);
       setTimeout(advance, 1300);
@@ -199,7 +194,7 @@
       renderDots(); emit();
       gameMascot.set('oops', 700);
       say('Tudo bem, vamos para o próximo!');
-      Audio2.speak(['proximo'], 'Tudo bem, vamos para o próximo!', 1);
+      Audio2.speak(['proximo']);
       Audio2.sfx.skip();
       setTimeout(advance, 1500);
     },
@@ -211,8 +206,7 @@
       say('Olha de novo...');
       const card = $('card');
       card.classList.remove('enter', 'win', 'leave'); void card.offsetWidth; card.classList.add('enter');
-      const n = rounds[idx].num;
-      Audio2.speak(['de-novo', ...n], `Olha de novo. ${[...n].map(d => WORDS[+d]).join(', ')}`);
+      Audio2.speak(['de-novo']);
     },
     back() {
       if (busy || idx === 0) return;
@@ -265,7 +259,6 @@
     show('name');
     paintName();
     if (nameMascot) nameMascot.set('happy');
-    Audio2.say('Qual é o seu nome?', 0.95);
   }
   const nameActions = {
     type(ch) {
@@ -304,7 +297,6 @@
     Audio2.sfx.correct();
     if (nameMascot) nameMascot.set('cheer', 1200);
     $('nameAsk').textContent = text;
-    Audio2.say(text, 1);
     setTimeout(() => { if (screen === 'name') { $('nameAsk').textContent = 'Qual é o seu nome?'; start(); } }, 1400);
   }
 
@@ -409,7 +401,7 @@
   $('sheet').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d =>
     `<div class="strip" style="--dc:${DIGIT_COLOR(d)}"><div class="face">${d}</div><div class="band"></div><small>cole aqui</small></div>`).join('');
 
-  Audio2.preload(['0','1','2','3','4','5','6','7','8','9','elogio-1','elogio-2','elogio-3','elogio-4','elogio-5','elogio-6','proximo','parabens','de-novo']);
+  Audio2.preload(['elogio-1','elogio-2','elogio-3','elogio-4','elogio-5','elogio-6','proximo','parabens','de-novo']);
 
   window.Game = {
     action,
