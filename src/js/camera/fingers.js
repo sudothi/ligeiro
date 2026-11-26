@@ -36,7 +36,7 @@ export function toView(lm, w, h, { mirror = false, rotate = false } = {}) {
     let x = p.x, y = p.y;
     if (mirror) x = 1 - x;
     if (rotate) { x = 1 - x; y = 1 - y; }
-    return { x: x * w, y: y * h, z: p.z };
+    return { x: x * w, y: y * h, z: p.z * w }; // z: depth, smaller = closer to the camera
   });
 }
 
@@ -82,26 +82,50 @@ export function extensions(p) {
   });
 }
 
-/* Per-finger memory of what "at rest" (open, flat) looks like, and a 0..1 bend score.
-   rest[n] is learned by calibration and keeps adapting slowly: an open finger is
-   the longest it gets, so the rest value follows the maximum and decays very slowly. */
+/* How high each fingertip is above its base, towards a camera that looks down
+   (MediaPipe's depth: smaller z = closer to the camera), relative to the hand size. */
+export function heights(p) {
+  const palm = (d(p[0], p[9]) + d(p[5], p[17])) / 2 || 1;
+  return FINGERS.map((fg, f) => {
+    const base = f === 0 ? 2 : fg.joints[0], tip = fg.joints[3];
+    return (p[base].z - p[tip].z) / palm;
+  });
+}
+
+/* The three gestures the child can make with one finger:
+   dobrar    hands open on the table, bend one finger (its tip comes towards the palm)
+   levantar  hands open on the table, lift one finger up (towards the camera)
+   esticar   hands closed, stretch one finger out (like counting) */
+export const GESTURES = {
+  dobrar: { verb: 'Dobre', past: 'dobrado', rest: 'abertas na mesa' },
+  levantar: { verb: 'Levante', past: 'levantado', rest: 'apoiadas na mesa' },
+  esticar: { verb: 'Estique', past: 'esticado', rest: 'fechadas' }
+};
+
+/* Per-finger memory of what "at rest" looks like and a 0..1 score of how much each
+   finger made the gesture. The rest values come from calibration and keep adapting
+   slowly towards the resting extreme (longest finger when open, shortest when closed). */
 export class BendMeter {
-  constructor() { this.reset(); }
+  constructor(gesture = 'dobrar') { this.gesture = GESTURES[gesture] ? gesture : 'dobrar'; this.reset(); }
   reset() {
     this.rest = {};   // n → rest extension
+    this.restZ = {};  // n → rest height
     this.smooth = {}; // n → smoothed extension
+    this.smoothZ = {};
     this.calib = null;
     this.done = false; // true after a calibration with the hands at rest
   }
+  setGesture(g) { if (GESTURES[g] && g !== this.gesture) { this.gesture = g; this.reset(); } }
   get calibrated() { return this.done && !this.calib; }
   startCalibration() { this.calib = {}; }
   finishCalibration() {
     if (!this.calib) return 0;
     let count = 0;
-    for (const [n, vals] of Object.entries(this.calib)) {
-      if (vals.length < 5) continue;
-      vals.sort((a, b) => a - b);
-      this.rest[n] = vals[Math.floor(vals.length * 0.6)];
+    const mid = vals => { vals.sort((a, b) => a - b); return vals[Math.floor(vals.length * 0.5)]; };
+    for (const [n, c] of Object.entries(this.calib)) {
+      if (c.e.length < 5) continue;
+      this.rest[n] = mid(c.e);
+      this.restZ[n] = mid(c.z);
       count++;
     }
     this.calib = null;
@@ -109,22 +133,40 @@ export class BendMeter {
     return count;
   }
   /* sides: output of assignSides. Returns { n: score } for the fingers it can see. */
-  /* FULL = how much shorter a fully bent finger looks; the thumb moves less seen from above */
-  update(sides, FULL = 0.35, FULL_THUMB = 0.25) {
+  update(sides) {
     const scores = {};
     for (const { pts, side } of sides) {
-      const ext = extensions(pts);
+      const ext = extensions(pts), hz = heights(pts);
       for (let f = 0; f < 5; f++) {
         const n = fingerNumber(side, f);
         const s = this.smooth[n] == null ? ext[f] : this.smooth[n] * 0.5 + ext[f] * 0.5;
-        this.smooth[n] = s;
-        if (this.calib) { (this.calib[n] = this.calib[n] || []).push(s); continue; }
-        const r = this.rest[n] == null ? s : Math.max(s, this.rest[n] * 0.9995);
-        this.rest[n] = r;
-        scores[n] = Math.max(0, Math.min(1, (r - s) / r / (f === 0 ? FULL_THUMB : FULL)));
+        const z = this.smoothZ[n] == null ? hz[f] : this.smoothZ[n] * 0.5 + hz[f] * 0.5;
+        this.smooth[n] = s; this.smoothZ[n] = z;
+        if (this.calib) { const c = (this.calib[n] = this.calib[n] || { e: [], z: [] }); c.e.push(s); c.z.push(z); continue; }
+        scores[n] = this.score(n, f, s, z);
       }
     }
     return scores;
+  }
+  score(n, f, s, z) {
+    const clamp = v => Math.max(0, Math.min(1, v));
+    if (this.gesture === 'esticar') {
+      // closed hand: rest is the shortest the finger gets; stretching makes it longer
+      const r = this.rest[n] == null ? s : Math.min(s, this.rest[n] * 1.0005);
+      this.rest[n] = r;
+      return clamp((s - r) / (f === 0 ? 0.4 : 0.5));
+    }
+    // open hand: rest is the longest the finger gets
+    const r = this.rest[n] == null ? s : Math.max(s, this.rest[n] * 0.9995);
+    this.rest[n] = r;
+    const shrink = clamp((r - s) / r / (f === 0 ? 0.25 : 0.35));
+    if (this.gesture === 'dobrar') return shrink;
+    // levantar: the tip comes up towards the camera (and looks a bit shorter from above);
+    // a finger bending down looks shorter too, so the shortening counts less without the rise
+    if (this.restZ[n] == null) this.restZ[n] = z;
+    const rise = z - this.restZ[n];
+    const up = clamp(rise / 0.3);
+    return Math.max(up, rise > 0.02 ? shrink : shrink * 0.4);
   }
 }
 
